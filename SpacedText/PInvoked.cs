@@ -40,5 +40,30 @@ namespace SpacedTextPlugin
                 G.ReleaseHdc();
             }
         }
+
+        public static Size MeasureString(Graphics G, string text, Font font, float letterSpacing)
+        {
+            IntPtr Hdc = default(IntPtr);
+            IntPtr FontPtr = default(IntPtr);
+            Size size = new Size();
+            try
+            {
+                //Grab the Graphic object's handle
+                Hdc = G.GetHdc();
+                //Set the current GDI font
+                FontPtr = Interop.SelectObject(Hdc, font.ToHfont());
+                //Set the kerning
+                Interop.SetTextCharacterExtra(Hdc, (int)(letterSpacing * font.Size));
+                Interop.GetTextExtentPoint(Hdc, text, text.Length, ref size);
+            }
+            finally
+            {
+                //Release the font
+                Interop.DeleteObject(FontPtr);
+                //Release the handle on the graphics object
+                G.ReleaseHdc();
+            }
+            return size;
+        }
     }
 }

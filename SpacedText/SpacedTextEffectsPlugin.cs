@@ -11,24 +11,24 @@
     using PaintDotNet.SystemLayer;
     using System.Collections.Generic;
     using System.Linq;
-    using PaintDotNet.IndirectUI;
     using Bitmap = System.Drawing.Bitmap;
     using FontStyle = System.Drawing.FontStyle;
 
     [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Spaced text")]
-    public class Test : PropertyBasedEffect
+    public class SpacedTextEffectsPlugin : PropertyBasedEffect
     {
         private string Text;
         private string FontFamily;
         private int FontSize;
         private double LetterSpacing;
+        private int AntiAliasLevel;
         private FontStyle FontStyle;
 
         private readonly string[] FontFamilies;
 
         private StringFormat frmt;
 
-        public Test() : base("Spaced text", null, "Text", EffectFlags.Configurable)
+        public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text", EffectFlags.Configurable)
         {
             FontFamilies =
                 UIUtil.GetGdiFontNames()
@@ -38,6 +38,8 @@
 
             frmt = (StringFormat)StringFormat.GenericDefault.Clone();
             frmt.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+
+            AntiAliasLevel = 1;
         }
 
         protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)
@@ -47,10 +49,17 @@
                 return;
             }
 
-            var font = new Font(FontFamily, FontSize * 2, FontStyle, GraphicsUnit.Point);
+            var font = new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Point);
 
-            //render text on 4x bitmap so it can be anti-aliased while scaling down
-            var bm = new Bitmap(base.SrcArgs.Width * 2, font.Height);
+            var bounds = EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt();
+            if (bounds.Equals(SrcArgs.Bounds))
+            {
+                //calculate bounds based on font size;
+                bounds = new Rectangle(0, 0, SrcArgs.Width, font.Height);
+            }
+
+            //render text on larger bitmap so it can be anti-aliased while scaling down
+            var bm = new Bitmap(bounds.Size.Width * AntiAliasLevel, bounds.Size.Height * AntiAliasLevel);
             var gr = Graphics.FromImage(bm);
             gr.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             gr.SmoothingMode = SmoothingMode.HighQuality;
@@ -60,26 +69,31 @@
             gr.TextContrast = 1;
             gr.Clear(Color.Transparent);
 
+            //measure text
+            var size = PInvoked.MeasureString(gr, Text, font, (float)LetterSpacing);
+            
             //draw text
-            PInvoked.TextOut(gr, Text, 0, 0, font, (float)LetterSpacing);
+            PInvoked.TextOut(gr, Text, bm.Width/2 - size.Width/2, 0, font, (float)LetterSpacing);
 
             //scale bitmap down onto result-size bitmap and apply anti-aliasing
-            var resultBm = new Bitmap(SrcArgs.Width, SrcArgs.Height);
+            var resultBm = new Bitmap(bounds.Width, bounds.Height);
             var resultGr = Graphics.FromImage(resultBm);
             resultGr.SmoothingMode = SmoothingMode.HighQuality;
             resultGr.InterpolationMode = InterpolationMode.HighQualityBicubic;
             resultGr.CompositingQuality = CompositingQuality.HighQuality;
             resultGr.CompositingMode = CompositingMode.SourceOver;
-            resultGr.DrawImage(bm, new Rectangle(0, 0, resultBm.Width, font.Height/2));
+            resultGr.DrawImage(bm, 0f, 0f, bounds.Width, bounds.Height);
             var surf = Surface.CopyFromBitmap(resultBm);
 
             //render bitmap to destination surface
             for (int i = startIndex; i < startIndex + length; i++)
             {
-                if (renderRects[i].Top < font.Height / 2)
+                if (renderRects[i].IntersectsWith(bounds))
                 {
+                    var renderBounds = bounds;
+                    renderBounds.Intersect(renderRects[i]);
                     //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
-                    CopyRectangle(renderRects[i], surf, base.DstArgs.Surface);
+                    CopyRectangle(renderBounds, surf, base.DstArgs.Surface);
                 }
                 else
                 {
@@ -101,8 +115,8 @@
                 new StringProperty("Text",
                     "The quick brown fox jumps over the lazy dog."),
                 new Int32Property("FontSize", 20, 1, 500),
-                new DoubleProperty("LetterSpacing", 0, -0.5, 5),
-
+                new DoubleProperty("LetterSpacing", 0, -0.3, 3),
+                new Int32Property("AntiAliasLevel", 2, 1, 8),
                 new StaticListChoiceProperty("FontFamily", FontFamilies, FontFamilies.FirstIndexWhere(f => f == "Arial")),
                 new BooleanProperty("Bold", false),
                 new BooleanProperty("Italic", false),
@@ -117,7 +131,7 @@
             this.FontFamily = newToken.GetProperty<StaticListChoiceProperty>("FontFamily").Value.ToString();
             this.FontSize = newToken.GetProperty<Int32Property>("FontSize").Value;
             this.LetterSpacing = newToken.GetProperty<DoubleProperty>("LetterSpacing").Value;
-
+            this.AntiAliasLevel = newToken.GetProperty<Int32Property>("AntiAliasLevel").Value;
             var fontFamily = new FontFamily(this.FontFamily);
             this.FontStyle = fontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : FontStyle.Bold;
             if (newToken.GetProperty<BooleanProperty>("Bold").Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
@@ -148,8 +162,8 @@
                 {
                     //use the buffer as an alpha map
                     ColorBgra color = base.EnvironmentParameters.PrimaryColor;
-                    ColorBgra opacitySource = buffer[x, y];
-                    color.A = (byte)(opacitySource.R);
+                    ColorBgra opacitySource = buffer[x - area.Left, y - area.Top];
+                    color.A = (byte) (opacitySource.R);
                     dest[x, y] = color;
                 }
             }

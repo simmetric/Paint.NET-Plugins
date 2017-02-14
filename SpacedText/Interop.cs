@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace SpacedTextPlugin
 {
+    using System.Drawing;
     using System.Runtime.InteropServices;
 
     internal class Interop
@@ -23,9 +24,12 @@ namespace SpacedTextPlugin
         public static extern bool DeleteObject(IntPtr objectHandle);
 
         [DllImport("gdi32")]
-        public static extern UInt32 SetTextColor(IntPtr hdc, int crColor);
+        public static extern uint SetTextColor(IntPtr hdc, int crColor);
 
         [DllImport("gdi32")]
-        public static extern UInt32 SetBkColor(IntPtr hdc, int crColor);
+        public static extern uint SetBkColor(IntPtr hdc, int crColor);
+
+        [DllImport("gdi32")]
+        public static extern void GetTextExtentPoint(IntPtr hdc, string text, int charcount, ref Size size);
     }
 }
