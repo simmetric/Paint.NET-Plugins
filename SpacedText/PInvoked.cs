@@ -13,8 +13,6 @@ namespace SpacedTextPlugin
     {
         public static void TextOut(Graphics G, string text, int x, int y, Font font, float letterSpacing)
         {
-            //If you want kerning
-            //I think this is twips
             IntPtr Hdc = default(IntPtr);
             IntPtr FontPtr = default(IntPtr);
             try
@@ -28,9 +26,8 @@ namespace SpacedTextPlugin
                 //Set the text color
                 Interop.SetTextColor(Hdc, ColorTranslator.ToWin32(Color.White));
                 //Set the kerning
-                Interop.SetTextCharacterExtra(Hdc, (int) (letterSpacing*font.Size));
+                Interop.SetTextCharacterExtra(Hdc, (int) Math.Round(letterSpacing*font.Size));
                 Interop.TextOut(Hdc, x, y, text, text.Length);
-
             }
             finally
             {

@@ -10,6 +10,7 @@
     using PaintDotNet.PropertySystem;
     using PaintDotNet.SystemLayer;
     using System.Collections.Generic;
+    using System.Drawing.Imaging;
     using System.Linq;
     using Bitmap = System.Drawing.Bitmap;
     using FontStyle = System.Drawing.FontStyle;
@@ -27,6 +28,9 @@
         private readonly string[] FontFamilies;
 
         private StringFormat frmt;
+
+        private Surface surf;
+        private Rectangle bounds;
 
         public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text", EffectFlags.Configurable)
         {
@@ -49,9 +53,33 @@
                 return;
             }
 
-            var font = new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Point);
+            //render bitmap to destination surface
+            for (int i = startIndex; i < startIndex + length; i++)
+            {
+                if (renderRects[i].IntersectsWith(bounds))
+                {
+                    var renderBounds = bounds;
+                    renderBounds.Intersect(renderRects[i]);
 
-            var bounds = EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt();
+                    //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
+                    CopyRectangle(renderBounds, surf, base.DstArgs.Surface);
+                }
+                else
+                {
+                    DstArgs.Surface.Clear(renderRects[i].ToRectInt32(), ColorBgra.Transparent);
+                }
+            }
+        }
+
+        private void RenderText()
+        {
+            Bitmap bm;
+            Graphics gr;
+            Bitmap resultBm;
+            Graphics resultGr;
+            var font = new Font(FontFamily, FontSize*AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
+
+            bounds = EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt();
             if (bounds.Equals(SrcArgs.Bounds))
             {
                 //calculate bounds based on font size;
@@ -59,8 +87,8 @@
             }
 
             //render text on larger bitmap so it can be anti-aliased while scaling down
-            var bm = new Bitmap(bounds.Size.Width * AntiAliasLevel, bounds.Size.Height * AntiAliasLevel);
-            var gr = Graphics.FromImage(bm);
+            bm = new Bitmap(bounds.Size.Width*AntiAliasLevel, bounds.Size.Height*AntiAliasLevel);
+            gr = Graphics.FromImage(bm);
             gr.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             gr.SmoothingMode = SmoothingMode.HighQuality;
             gr.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -70,36 +98,20 @@
             gr.Clear(Color.Transparent);
 
             //measure text
-            var size = PInvoked.MeasureString(gr, Text, font, (float)LetterSpacing);
-            
+            var size = PInvoked.MeasureString(gr, Text, font, (float) LetterSpacing);
+
             //draw text
-            PInvoked.TextOut(gr, Text, bm.Width/2 - size.Width/2, 0, font, (float)LetterSpacing);
+            PInvoked.TextOut(gr, Text, bm.Width/2 - size.Width/2, 0, font, (float) LetterSpacing);
 
             //scale bitmap down onto result-size bitmap and apply anti-aliasing
-            var resultBm = new Bitmap(bounds.Width, bounds.Height);
-            var resultGr = Graphics.FromImage(resultBm);
+            resultBm = new Bitmap(bounds.Width, bounds.Height);
+            resultGr = Graphics.FromImage(resultBm);
             resultGr.SmoothingMode = SmoothingMode.HighQuality;
             resultGr.InterpolationMode = InterpolationMode.HighQualityBicubic;
             resultGr.CompositingQuality = CompositingQuality.HighQuality;
             resultGr.CompositingMode = CompositingMode.SourceOver;
             resultGr.DrawImage(bm, 0f, 0f, bounds.Width, bounds.Height);
-            var surf = Surface.CopyFromBitmap(resultBm);
-
-            //render bitmap to destination surface
-            for (int i = startIndex; i < startIndex + length; i++)
-            {
-                if (renderRects[i].IntersectsWith(bounds))
-                {
-                    var renderBounds = bounds;
-                    renderBounds.Intersect(renderRects[i]);
-                    //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
-                    CopyRectangle(renderBounds, surf, base.DstArgs.Surface);
-                }
-                else
-                {
-                    DstArgs.Surface.Clear(renderRects[i].ToRectInt32(), ColorBgra.Transparent);
-                }
-            }
+            surf = Surface.CopyFromBitmap(resultBm);
 
             //cleanup
             gr.Dispose();
@@ -152,6 +164,8 @@
             }
 
             base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
+
+            RenderText();
         }
 
         private void CopyRectangle(Rectangle area, Surface buffer, Surface dest)
@@ -162,7 +176,7 @@
                 {
                     //use the buffer as an alpha map
                     ColorBgra color = base.EnvironmentParameters.PrimaryColor;
-                    ColorBgra opacitySource = buffer[x - area.Left, y - area.Top];
+                    ColorBgra opacitySource = buffer[x, y];
                     color.A = (byte) (opacitySource.R);
                     dest[x, y] = color;
                 }
