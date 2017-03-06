@@ -12,6 +12,7 @@
     using System.Collections.Generic;
     using System.Drawing.Imaging;
     using System.Linq;
+    using PaintDotNet.Rendering;
     using Bitmap = System.Drawing.Bitmap;
     using FontStyle = System.Drawing.FontStyle;
 
@@ -63,6 +64,15 @@
 
                     //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
                     CopyRectangle(renderBounds, surf, base.DstArgs.Surface);
+
+                    //clear the remainder
+                    DstArgs.Surface.Clear(new RectInt32(
+                        renderRects[i].X,
+                        renderBounds.Bottom,
+                        renderRects[i].Width,
+                        renderRects[i].Bottom - renderBounds.Bottom
+                    ), ColorBgra.Transparent);
+
                 }
                 else
                 {
@@ -176,7 +186,7 @@
                 {
                     //use the buffer as an alpha map
                     ColorBgra color = base.EnvironmentParameters.PrimaryColor;
-                    ColorBgra opacitySource = buffer[x, y];
+                    ColorBgra opacitySource = buffer[x - bounds.Left, y - bounds.Top];
                     color.A = (byte) (opacitySource.R);
                     dest[x, y] = color;
                 }
