@@ -33,7 +33,7 @@
         private Surface surf;
         private Rectangle bounds;
 
-        public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text", EffectFlags.Configurable)
+        public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text formations", EffectFlags.Configurable)
         {
             FontFamilies =
                 UIUtil.GetGdiFontNames()
