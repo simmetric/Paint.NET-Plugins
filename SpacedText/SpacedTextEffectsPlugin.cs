@@ -217,10 +217,10 @@
                     "The quick brown fox jumps over the lazy dog."),
                 new Int32Property(Constants.Properties.FontSize.ToString(), 20, 1, 500),
                 new DoubleProperty(Constants.Properties.LetterSpacing.ToString(), 0, -0.3, 3),
-                new DoubleProperty(Constants.Properties.LineSpacing.ToString(), 0, -0.3, 3),
+                new DoubleProperty(Constants.Properties.LineSpacing.ToString(), 0, -0.6, 3),
                 new Int32Property(Constants.Properties.AntiAliasLevel.ToString(), 2, 1, 8),
                 new StaticListChoiceProperty(Constants.Properties.FontFamily.ToString(), FontFamilies, FontFamilies.FirstIndexWhere(f => f == "Arial")),
-                new StaticListChoiceProperty(Constants.Properties.TextAlignment, System.Enum.GetNames(typeof(Constants.TextAlignmentOptions)), 0),
+                new StaticListChoiceProperty(Constants.Properties.TextAlignment, System.Enum.GetNames(typeof(Constants.TextAlignmentOptions)).Except(Constants.TextAlignmentOptions.Justify.ToString()).ToArray(), 0),
                 new BooleanProperty(Constants.Properties.Bold.ToString(), false),
                 new BooleanProperty(Constants.Properties.Italic.ToString(), false),
                 new BooleanProperty(Constants.Properties.Underline.ToString(), false),
@@ -231,6 +231,20 @@
         protected override ControlInfo OnCreateConfigUI(PropertyCollection props)
         {
             var configUI = CreateDefaultConfigUI(props);
+
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.SliderLargeChange, 0.25);
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.SliderSmallChange, 0.01);
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.UpDownIncrement, 0.01);
+
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.SliderLargeChange, 0.25);
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.SliderSmallChange, 0.01);
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.UpDownIncrement, 0.01);
 
             return configUI;
         }
