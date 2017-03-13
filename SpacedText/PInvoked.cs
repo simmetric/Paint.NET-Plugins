@@ -1,18 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SpacedTextPlugin
 {
     using System.Drawing;
-    using System.Runtime.InteropServices;
+    using System.Drawing.Drawing2D;
 
     public class PInvoked
     {
         public static void TextOut(Graphics G, string text, int x, int y, Font font, float letterSpacing)
         {
+            G.PixelOffsetMode = PixelOffsetMode.HighQuality;
             IntPtr Hdc = default(IntPtr);
             IntPtr FontPtr = default(IntPtr);
             try

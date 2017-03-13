@@ -65,6 +65,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Constants.cs" />
     <Compile Include="Interop.cs" />
     <Compile Include="PInvoked.cs" />
     <Compile Include="SpacedTextEffectsPlugin.cs" />

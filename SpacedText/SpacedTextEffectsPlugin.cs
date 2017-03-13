@@ -1,5 +1,6 @@
 ﻿namespace SpacedTextPlugin
 {
+    using System;
     using System.Drawing;
     using System.Drawing.Drawing2D;
     using System.Drawing.Text;
@@ -12,6 +13,7 @@
     using System.Collections.Generic;
     using System.Drawing.Imaging;
     using System.Linq;
+    using PaintDotNet.IndirectUI;
     using PaintDotNet.Rendering;
     using Bitmap = System.Drawing.Bitmap;
     using FontStyle = System.Drawing.FontStyle;
@@ -23,15 +25,17 @@
         private string FontFamily;
         private int FontSize;
         private double LetterSpacing;
+        private double LineSpacing;
         private int AntiAliasLevel;
         private FontStyle FontStyle;
+        private Constants.TextAlignmentOptions TextAlign;
 
         private readonly string[] FontFamilies;
 
-        private StringFormat frmt;
-
         private Surface surf;
         private Rectangle bounds;
+        
+        private readonly ImageAttributes imgAttr;
 
         public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text Formations", EffectFlags.Configurable)
         {
@@ -41,10 +45,18 @@
                     .Select(f => f.Item1).OrderBy(f => f)
                     .ToArray();
 
-            frmt = (StringFormat)StringFormat.GenericDefault.Clone();
-            frmt.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+            AntiAliasLevel = 2;
 
-            AntiAliasLevel = 1;
+            ColorMap[] colorMap = new ColorMap[]
+            {
+                new ColorMap
+                {
+                    OldColor = Color.Black,
+                    NewColor = Color.Transparent
+                }
+            };
+            imgAttr = new ImageAttributes();
+            imgAttr.SetRemapTable(colorMap);
         }
 
         protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)
@@ -90,11 +102,6 @@
             var font = new Font(FontFamily, FontSize*AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
 
             bounds = EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt();
-            if (bounds.Equals(SrcArgs.Bounds))
-            {
-                //calculate bounds based on font size;
-                bounds = new Rectangle(0, 0, SrcArgs.Width, font.Height);
-            }
 
             //render text on larger bitmap so it can be anti-aliased while scaling down
             bm = new Bitmap(bounds.Size.Width*AntiAliasLevel, bounds.Size.Height*AntiAliasLevel);
@@ -105,13 +112,84 @@
             gr.CompositingQuality = CompositingQuality.HighQuality;
             gr.CompositingMode = CompositingMode.SourceOver;
             gr.TextContrast = 1;
-            gr.Clear(Color.Transparent);
+            gr.Clear(Color.Black);
 
-            //measure text
-            var size = PInvoked.MeasureString(gr, Text, font, (float) LetterSpacing);
+            //split in lines
+            float letterSpacing = 0;
+            if (TextAlign != Constants.TextAlignmentOptions.Justify)
+            {
+                letterSpacing = (float)LetterSpacing;
+            }
+            var words = Text.Split(' ');
+            List<string> lines = new List<string>();
+            string currentLine = string.Empty;
+            foreach (string word in words)
+            {
+                //measure currentline + word
+                //else add word to currentline
+                if (PInvoked.MeasureString(gr, currentLine + " " + word, font, letterSpacing).Width > bm.Width - FontSize)
+                {
+                    //if outside bounds, then add line
+                    lines.Add(currentLine.Trim());
+                    currentLine = word + " ";
+                }
+                else
+                {
+                    currentLine += word + " ";
+                }
+            }
+            //add currentline
+            if (!string.IsNullOrEmpty(currentLine))
+            {
+                lines.Add(currentLine);
+            }
 
-            //draw text
-            PInvoked.TextOut(gr, Text, bm.Width/2 - size.Width/2, 0, font, (float) LetterSpacing);
+            //draw lines
+            //justify if necessary
+            int lineStart = 0;
+            foreach (string line in lines)
+            {
+                int left = FontSize / 2;
+                Size textBounds;
+                if (TextAlign != Constants.TextAlignmentOptions.Justify)
+                {
+                    //measure text
+                    textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
+                    if (TextAlign != Constants.TextAlignmentOptions.Left)
+                    {
+                        if (TextAlign == Constants.TextAlignmentOptions.Center)
+                        {
+                            left = bm.Width / 2 - textBounds.Width / 2;
+
+                        }
+                        else if (TextAlign == Constants.TextAlignmentOptions.Right)
+                        {
+                            left = bm.Width - textBounds.Width;
+                        }
+                    }
+                }
+                else
+                {
+                    textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
+                    while (textBounds.Width <= bm.Width - FontSize)
+                    {
+                        letterSpacing += 0.01f;
+                        textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
+                    }
+                }
+
+                //create new bitmap for line
+                Bitmap lineBm = new Bitmap(textBounds.Width * AntiAliasLevel, textBounds.Height * AntiAliasLevel);
+                Graphics lineGr = Graphics.FromImage(lineBm);
+                //draw text
+                PInvoked.TextOut(lineGr, line, 0, 0, font, letterSpacing);
+                //draw lineBm to bm leaving out black
+                gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), textBounds), 0, 0, textBounds.Width, textBounds.Height, GraphicsUnit.Pixel, imgAttr);
+                lineGr.Dispose();
+                lineBm.Dispose();
+
+                lineStart += font.Height + (int)Math.Round((double)font.Height * LineSpacing);
+            }
 
             //scale bitmap down onto result-size bitmap and apply anti-aliasing
             resultBm = new Bitmap(bounds.Width, bounds.Height);
@@ -134,41 +212,69 @@
         {
             return new PropertyCollection(new List<Property>
             {
-                new StringProperty("Text",
+                new StringProperty(Constants.Properties.Text.ToString(),
                     "The quick brown fox jumps over the lazy dog."),
-                new Int32Property("FontSize", 20, 1, 500),
-                new DoubleProperty("LetterSpacing", 0, -0.3, 3),
-                new Int32Property("AntiAliasLevel", 2, 1, 8),
-                new StaticListChoiceProperty("FontFamily", FontFamilies, FontFamilies.FirstIndexWhere(f => f == "Arial")),
-                new BooleanProperty("Bold", false),
-                new BooleanProperty("Italic", false),
-                new BooleanProperty("Underline", false),
-                new BooleanProperty("Strikeout", false),
+                new Int32Property(Constants.Properties.FontSize.ToString(), 20, 1, 500),
+                new DoubleProperty(Constants.Properties.LetterSpacing.ToString(), 0, -0.3, 3),
+                new DoubleProperty(Constants.Properties.LineSpacing.ToString(), 0, -0.6, 3),
+                new Int32Property(Constants.Properties.AntiAliasLevel.ToString(), 2, 1, 8),
+                new StaticListChoiceProperty(Constants.Properties.FontFamily.ToString(), FontFamilies, FontFamilies.FirstIndexWhere(f => f == "Arial")),
+                new StaticListChoiceProperty(Constants.Properties.TextAlignment, System.Enum.GetNames(typeof(Constants.TextAlignmentOptions)).Except(Constants.TextAlignmentOptions.Justify.ToString()).ToArray(), 0),
+                new BooleanProperty(Constants.Properties.Bold.ToString(), false),
+                new BooleanProperty(Constants.Properties.Italic.ToString(), false),
+                new BooleanProperty(Constants.Properties.Underline.ToString(), false),
+                new BooleanProperty(Constants.Properties.Strikeout.ToString(), false),
             });
         }
-        
+
+        protected override ControlInfo OnCreateConfigUI(PropertyCollection props)
+        {
+            var configUI = CreateDefaultConfigUI(props);
+
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.SliderLargeChange, 0.25);
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.SliderSmallChange, 0.01);
+            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+                ControlInfoPropertyNames.UpDownIncrement, 0.01);
+
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.SliderLargeChange, 0.25);
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.SliderSmallChange, 0.01);
+            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+                ControlInfoPropertyNames.UpDownIncrement, 0.01);
+
+            return configUI;
+        }
+
         protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
         {
-            this.Text = newToken.GetProperty<StringProperty>("Text").Value;
-            this.FontFamily = newToken.GetProperty<StaticListChoiceProperty>("FontFamily").Value.ToString();
-            this.FontSize = newToken.GetProperty<Int32Property>("FontSize").Value;
-            this.LetterSpacing = newToken.GetProperty<DoubleProperty>("LetterSpacing").Value;
-            this.AntiAliasLevel = newToken.GetProperty<Int32Property>("AntiAliasLevel").Value;
+            this.Text = newToken.GetProperty<StringProperty>(Constants.Properties.Text.ToString()).Value;
+            this.FontFamily = newToken.GetProperty<StaticListChoiceProperty>(Constants.Properties.FontFamily.ToString()).Value.ToString();
+            this.FontSize = newToken.GetProperty<Int32Property>(Constants.Properties.FontSize.ToString()).Value;
+            this.LetterSpacing = newToken.GetProperty<DoubleProperty>(Constants.Properties.LetterSpacing.ToString()).Value;
+            this.LineSpacing = newToken.GetProperty<DoubleProperty>(Constants.Properties.LineSpacing.ToString()).Value;
+            this.AntiAliasLevel = newToken.GetProperty<Int32Property>(Constants.Properties.AntiAliasLevel.ToString()).Value;
             var fontFamily = new FontFamily(this.FontFamily);
             this.FontStyle = fontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : FontStyle.Bold;
-            if (newToken.GetProperty<BooleanProperty>("Bold").Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
+            this.TextAlign = (Constants.TextAlignmentOptions) Enum.Parse(typeof(Constants.TextAlignmentOptions),
+                newToken
+                    .GetProperty<StaticListChoiceProperty>(Constants.Properties.TextAlignment.ToString())
+                    .Value.ToString());
+            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Bold.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
             {
                 this.FontStyle |= FontStyle.Bold;
             }
-            if (newToken.GetProperty<BooleanProperty>("Italic").Value && fontFamily.IsStyleAvailable(FontStyle.Italic))
+            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Italic.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Italic))
             {
                 this.FontStyle |= FontStyle.Italic;
             }
-            if (newToken.GetProperty<BooleanProperty>("Underline").Value && fontFamily.IsStyleAvailable(FontStyle.Underline))
+            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Underline.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Underline))
             {
                 this.FontStyle |= FontStyle.Underline;
             }
-            if (newToken.GetProperty<BooleanProperty>("Strikeout").Value && fontFamily.IsStyleAvailable(FontStyle.Strikeout))
+            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Strikeout.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Strikeout))
             {
                 this.FontStyle |= FontStyle.Strikeout;
             }
