@@ -34,9 +34,8 @@
 
         private Surface surf;
         private Rectangle bounds;
-
-        private ColorMap[] colorMap;
-        private ImageAttributes imgAttr;
+        
+        private readonly ImageAttributes imgAttr;
 
         public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text Formations", EffectFlags.Configurable)
         {
@@ -48,7 +47,7 @@
 
             AntiAliasLevel = 2;
 
-            colorMap = new ColorMap[]
+            ColorMap[] colorMap = new ColorMap[]
             {
                 new ColorMap
                 {
