@@ -120,7 +120,7 @@
             {
                 letterSpacing = (float)LetterSpacing;
             }
-            var words = Text.Split(new [] {' '}, StringSplitOptions.RemoveEmptyEntries);
+            var words = Text.Split(new [] {' ', '\r', '\n'}, StringSplitOptions.RemoveEmptyEntries);
             List<string> lines = new List<string>();
             string currentLine = string.Empty;
             foreach (string word in words)
@@ -141,14 +141,17 @@
             //add currentline
             if (!string.IsNullOrEmpty(currentLine))
             {
-                lines.Add(currentLine);
+                lines.Add(currentLine.Trim());
             }
 
             //draw lines
             //justify if necessary
             int lineStart = 0;
+            int lineNum = 0;
             foreach (string line in lines)
             {
+                lineNum++;
+
                 int left = FontSize/2;
                 Size textBounds;
                 if (TextAlign != Constants.TextAlignmentOptions.Justify)
@@ -159,12 +162,11 @@
                     {
                         if (TextAlign == Constants.TextAlignmentOptions.Center)
                         {
-                            left = bm.Width/2 - textBounds.Width/2;
-
+                            left = bm.Width / 2 - textBounds.Width / 2;
                         }
                         else if (TextAlign == Constants.TextAlignmentOptions.Right)
                         {
-                            left = bm.Width - textBounds.Width;
+                            left = bm.Width - (textBounds.Width + FontSize);
                         }
                     }
                 }
@@ -184,9 +186,12 @@
                     Graphics lineGr = Graphics.FromImage(lineBm);
                     //draw text
                     PInvoked.TextOut(lineGr, line, 0, 0, font, letterSpacing);
+#if DEBUG
+                    //lineBm.Save($"C:\\dev\\line{lineNum}.png", ImageFormat.Png);
+#endif
                     //draw lineBm to bm leaving out black
-                    gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), textBounds), 0, 0, textBounds.Width,
-                        textBounds.Height, GraphicsUnit.Pixel, imgAttr);
+                    gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), lineBm.Size), 0, 0, lineBm.Width,
+                        lineBm.Height, GraphicsUnit.Pixel, imgAttr);
                     lineGr.Dispose();
                     lineBm.Dispose();
                 }
@@ -203,6 +208,11 @@
             resultGr.CompositingMode = CompositingMode.SourceOver;
             resultGr.DrawImage(bm, 0f, 0f, bounds.Width, bounds.Height);
             surf = Surface.CopyFromBitmap(resultBm);
+
+#if DEBUG
+            //bm.Save("C:\\dev\\buffer.png", ImageFormat.Png);
+            //resultBm.Save("C:\\dev\\result.png", ImageFormat.Png);
+#endif
 
             //cleanup
             gr.Dispose();
@@ -233,6 +243,16 @@
         protected override ControlInfo OnCreateConfigUI(PropertyCollection props)
         {
             var configUI = CreateDefaultConfigUI(props);
+
+            configUI.SetPropertyControlValue(Constants.Properties.Text.ToString(), ControlInfoPropertyNames.Multiline, true);
+            configUI.SetPropertyControlValue(Constants.Properties.Bold.ToString(), ControlInfoPropertyNames.DisplayName, "Formatting");
+            configUI.SetPropertyControlValue(Constants.Properties.Bold.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Bold.ToString());
+            configUI.SetPropertyControlValue(Constants.Properties.Italic.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(Constants.Properties.Italic.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Italic.ToString());
+            configUI.SetPropertyControlValue(Constants.Properties.Underline.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(Constants.Properties.Underline.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Underline.ToString());
+            configUI.SetPropertyControlValue(Constants.Properties.Strikeout.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(Constants.Properties.Strikeout.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Strikeout.ToString());
 
             configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
                 ControlInfoPropertyNames.SliderLargeChange, 0.25);

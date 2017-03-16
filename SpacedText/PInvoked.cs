@@ -47,7 +47,7 @@ namespace SpacedTextPlugin
                 //Set the current GDI font
                 FontPtr = Interop.SelectObject(Hdc, font.ToHfont());
                 //Set the kerning
-                Interop.SetTextCharacterExtra(Hdc, (int)(letterSpacing * font.Size));
+                Interop.SetTextCharacterExtra(Hdc, (int) Math.Round(letterSpacing*font.Size));
                 Interop.GetTextExtentPoint(Hdc, text, text.Length, ref size);
             }
             finally
