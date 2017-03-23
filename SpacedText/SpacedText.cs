@@ -6,6 +6,7 @@
     using System.Drawing.Drawing2D;
     using System.Drawing.Imaging;
     using System.Drawing.Text;
+    using System.Linq;
     using PaintDotNet;
 
     internal class SpacedText : IDisposable
@@ -45,7 +46,7 @@
         public void RenderText(Rectangle bounds)
         {
             Bounds = bounds;
-            var font = new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
+            Font font = new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
             
             //render text on larger bitmap so it can be anti-aliased while scaling down
             Bitmap bm = new Bitmap(Bounds.Size.Width * AntiAliasLevel, Bounds.Size.Height * AntiAliasLevel);
@@ -133,11 +134,13 @@
 
         private List<string> LineWrap(Graphics gr, Font font, double letterSpacing, Bitmap bm)
         {
-            var words = Text.Replace(Environment.NewLine, " " + Environment.NewLine + " ")
-                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] words = Text.Replace(Environment.NewLine, " " + Environment.NewLine + " ")
+                .Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries);
             List<string> lines = new List<string>();
-            string currentLine = string.Empty;
-            foreach (string word in words)
+
+            string currentLine = words.Any() ? words.First() + " " : string.Empty;
+
+            foreach (string word in words.Skip(1))
             {
                 //if manual line break: end current line and start new line
                 if (word.Equals(Environment.NewLine))
@@ -149,7 +152,7 @@
 
                 //measure currentline + word
                 //else add word to currentline
-                if (PInvoked.MeasureString(gr, currentLine + " " + word, font, letterSpacing).Width > bm.Width - FontSize)
+                if (PInvoked.MeasureString(gr, currentLine + word, font, letterSpacing).Width > bm.Width - FontSize)
                 {
                     //if outside bounds, then add line
                     lines.Add(currentLine.Trim());
