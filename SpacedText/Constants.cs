@@ -20,17 +20,14 @@ namespace SpacedTextPlugin
             Italic,
             Underline,
             Strikeout,
-            TextAlignment,
-            JustifyText,
-            JustifyExceptLastLine
+            TextAlignment
         }
 
         public enum TextAlignmentOptions
         {
             Left,
             Center,
-            Right,
-            Justify
+            Right
         }
     }
 }
