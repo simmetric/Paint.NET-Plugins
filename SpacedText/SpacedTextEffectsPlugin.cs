@@ -13,6 +13,7 @@
     using PaintDotNet.IndirectUI;
     using PaintDotNet.Rendering;
     using FontStyle = System.Drawing.FontStyle;
+    using C = Constants;
 
     [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Spaced text")]
     public class SpacedTextEffectsPlugin : PropertyBasedEffect
@@ -34,18 +35,17 @@
         {
             return new PropertyCollection(new List<Property>
             {
-                new StringProperty(Constants.Properties.Text.ToString(),
-                    "The quick brown fox jumps over the lazy dog."),
-                new Int32Property(Constants.Properties.FontSize.ToString(), 20, 1, 500),
-                new DoubleProperty(Constants.Properties.LetterSpacing.ToString(), 0, -0.3, 3),
-                new DoubleProperty(Constants.Properties.LineSpacing.ToString(), 0, -0.6, 3),
-                new Int32Property(Constants.Properties.AntiAliasLevel.ToString(), 2, 1, 8),
-                new StaticListChoiceProperty(Constants.Properties.FontFamily.ToString(), fontFamilies.ToArray<object>(), fontFamilies.FirstIndexWhere(f => f == "Arial")),
-                new StaticListChoiceProperty(Constants.Properties.TextAlignment, Enum.GetNames(typeof(Constants.TextAlignmentOptions)).ToArray<object>(), 0),
-                new BooleanProperty(Constants.Properties.Bold.ToString(), false),
-                new BooleanProperty(Constants.Properties.Italic.ToString(), false),
-                new BooleanProperty(Constants.Properties.Underline.ToString(), false),
-                new BooleanProperty(Constants.Properties.Strikeout.ToString(), false),
+                new StringProperty(C.Properties.Text.ToString(), C.DefaultText),
+                new Int32Property(C.Properties.FontSize.ToString(), C.DefaultFontSize, C.MinFontSize, C.MaxFontSize),
+                new DoubleProperty(C.Properties.LetterSpacing.ToString(), C.DefaultLetterSpacing, C.MinLetterSpacing, C.MaxLetterSpacing),
+                new DoubleProperty(C.Properties.LineSpacing.ToString(), C.DefaultLineSpacing, C.MinLineSpacing, C.MaxLineSpacing),
+                new Int32Property(C.Properties.AntiAliasLevel.ToString(), C.DefaultAntiAliasingLevel, C.MinAntiAliasingLevel, C.MaxAntiAliasingLevel),
+                new StaticListChoiceProperty(C.Properties.FontFamily.ToString(), fontFamilies.ToArray<object>(), fontFamilies.FirstIndexWhere(f => f == "Arial" || f == "Helvetica")),
+                new StaticListChoiceProperty(C.Properties.TextAlignment, Enum.GetNames(typeof(C.TextAlignmentOptions)).ToArray<object>(), 0),
+                new BooleanProperty(C.Properties.Bold.ToString(), false),
+                new BooleanProperty(C.Properties.Italic.ToString(), false),
+                new BooleanProperty(C.Properties.Underline.ToString(), false),
+                new BooleanProperty(C.Properties.Strikeout.ToString(), false),
             });
         }
 
@@ -82,37 +82,37 @@
 
         protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
         {
-            helper.Text = newToken.GetProperty<StringProperty>(Constants.Properties.Text.ToString()).Value;
-            helper.FontFamily = newToken.GetProperty<StaticListChoiceProperty>(Constants.Properties.FontFamily.ToString()).Value.ToString();
-            helper.FontSize = newToken.GetProperty<Int32Property>(Constants.Properties.FontSize.ToString()).Value;
-            helper.LetterSpacing = newToken.GetProperty<DoubleProperty>(Constants.Properties.LetterSpacing.ToString()).Value;
-            helper.LineSpacing = newToken.GetProperty<DoubleProperty>(Constants.Properties.LineSpacing.ToString()).Value;
-            helper.AntiAliasLevel = newToken.GetProperty<Int32Property>(Constants.Properties.AntiAliasLevel.ToString()).Value;
+            helper.Text = newToken.GetProperty<StringProperty>(C.Properties.Text.ToString()).Value;
+            helper.FontFamily = newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value.ToString();
+            helper.FontSize = newToken.GetProperty<Int32Property>(C.Properties.FontSize.ToString()).Value;
+            helper.LetterSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LetterSpacing.ToString()).Value;
+            helper.LineSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LineSpacing.ToString()).Value;
+            helper.AntiAliasLevel = newToken.GetProperty<Int32Property>(C.Properties.AntiAliasLevel.ToString()).Value;
             var fontFamily = new FontFamily(helper.FontFamily);
-            helper.FontStyle = fontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : FontStyle.Bold;
-            helper.TextAlign = (Constants.TextAlignmentOptions) Enum.Parse(typeof(Constants.TextAlignmentOptions),
+            helper.FontStyle = fontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : fontFamily.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Italic;
+            helper.TextAlign = (C.TextAlignmentOptions) Enum.Parse(typeof(C.TextAlignmentOptions),
                 newToken
-                    .GetProperty<StaticListChoiceProperty>(Constants.Properties.TextAlignment.ToString())
+                    .GetProperty<StaticListChoiceProperty>(C.Properties.TextAlignment.ToString())
                     .Value.ToString());
-            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Bold.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Bold.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
             {
                 helper.FontStyle |= FontStyle.Bold;
             }
-            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Italic.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Italic))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Italic.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Italic))
             {
                 helper.FontStyle |= FontStyle.Italic;
             }
-            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Underline.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Underline))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Underline.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Underline))
             {
                 helper.FontStyle |= FontStyle.Underline;
             }
-            if (newToken.GetProperty<BooleanProperty>(Constants.Properties.Strikeout.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Strikeout))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Strikeout.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Strikeout))
             {
                 helper.FontStyle |= FontStyle.Strikeout;
             }
 
             base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
-
+            helper.IsCancelRequested = IsCancelRequested;
             helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt());
         }
 

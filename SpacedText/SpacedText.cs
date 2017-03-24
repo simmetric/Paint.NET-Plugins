@@ -8,6 +8,7 @@
     using System.Drawing.Text;
     using System.Linq;
     using PaintDotNet;
+    using C = Constants;
 
     internal class SpacedText : IDisposable
     {
@@ -21,6 +22,9 @@
         public FontStyle FontStyle { get; set; }
         public Constants.TextAlignmentOptions TextAlign { get; set; }
 
+        //flow control
+        public bool IsCancelRequested { get; set; }
+
         //public result
         public Rectangle Bounds { get; private set; }
         public Surface BufferSurface { get; private set; }
@@ -30,7 +34,7 @@
 
         public SpacedText()
         {
-            AntiAliasLevel = 2;
+            AntiAliasLevel = Constants.DefaultAntiAliasingLevel;
 
             ColorMap[] colorMap = {
                 new ColorMap
@@ -59,11 +63,17 @@
             //letterspacing may be changed during execution
             double letterSpacing = LetterSpacing;
 
-            //split in lines
-            List<string> lines = LineWrap(gr, font, letterSpacing, bm);
+            if (!IsCancelRequested)
+            {
+                //split in lines
+                List<string> lines = LineWrap(gr, font, letterSpacing, bm);
 
-            //draw lines
-            DrawLines(lines, gr, font, letterSpacing, bm);
+                if (!IsCancelRequested)
+                {
+                    //draw lines
+                    DrawLines(lines, gr, font, letterSpacing, bm);
+                }
+            }
 
             //scale bitmap down onto result-size bitmap and apply anti-aliasing
             Bitmap resultBm = new Bitmap(Bounds.Width, Bounds.Height);
@@ -90,6 +100,11 @@
             int lineNum = 0;
             foreach (string line in lines)
             {
+                if (IsCancelRequested || lineStart > Bounds.Bottom * AntiAliasLevel)
+                {
+                    break;
+                }
+
                 lineNum++;
 
                 if (!line.Equals(string.Empty))
@@ -110,7 +125,8 @@
                         }
                     }
 
-                    if (textBounds.Width > 0 && textBounds.Height > 0)
+                    if (textBounds.Width > 0 && textBounds.Height > 0 && 
+                        textBounds.Width * AntiAliasLevel < Constants.MaxBitmapSize && textBounds.Height * AntiAliasLevel < Constants.MaxBitmapSize)
                     {
                         //create new bitmap for line
                         Bitmap lineBm = new Bitmap(textBounds.Width * AntiAliasLevel, textBounds.Height * AntiAliasLevel);
@@ -134,11 +150,11 @@
 
         private List<string> LineWrap(Graphics gr, Font font, double letterSpacing, Bitmap bm)
         {
-            string[] words = Text.Replace(Environment.NewLine, " " + Environment.NewLine + " ")
-                .Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries);
+            string[] words = Text.Replace(Environment.NewLine, " " + Environment.NewLine + C.Space)
+                .Split(new[] {C.SpaceChar}, StringSplitOptions.RemoveEmptyEntries);
             List<string> lines = new List<string>();
 
-            string currentLine = words.Any() ? words.First() + " " : string.Empty;
+            string currentLine = words.Any() ? words.First() + C.Space : string.Empty;
 
             foreach (string word in words.Skip(1))
             {
@@ -156,11 +172,11 @@
                 {
                     //if outside bounds, then add line
                     lines.Add(currentLine.Trim());
-                    currentLine = word + " ";
+                    currentLine = word + C.Space;
                 }
                 else
                 {
-                    currentLine += word + " ";
+                    currentLine += word + C.Space;
                 }
             }
             //add currentline
