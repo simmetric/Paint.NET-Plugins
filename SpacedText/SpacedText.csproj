@@ -68,6 +68,7 @@
     <Compile Include="Constants.cs" />
     <Compile Include="Interop.cs" />
     <Compile Include="PInvoked.cs" />
+    <Compile Include="SpacedText.cs" />
     <Compile Include="SpacedTextEffectsPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
