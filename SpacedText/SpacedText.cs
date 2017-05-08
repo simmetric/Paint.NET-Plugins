@@ -49,49 +49,60 @@
 
         public void RenderText(Rectangle bounds)
         {
-            Bounds = bounds;
-            Font font = new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
-            
-            //render text on larger bitmap so it can be anti-aliased while scaling down
-            Bitmap bm = new Bitmap(Bounds.Size.Width * AntiAliasLevel, Bounds.Size.Height * AntiAliasLevel);
-            Graphics gr = Graphics.FromImage(bm);
-            gr.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            gr.SmoothingMode = SmoothingMode.HighQuality;
-            gr.CompositingMode = CompositingMode.SourceOver;
-            gr.Clear(Color.Black);
-
-            //letterspacing may be changed during execution
-            double letterSpacing = LetterSpacing;
-
-            if (!IsCancelRequested)
+            try
             {
-                //split in lines
-                List<string> lines = LineWrap(gr, font, letterSpacing, bm);
+                Bounds = bounds;
+                Font font = new Font(FontFamily, FontSize*AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
+
+                //render text on larger bitmap so it can be anti-aliased while scaling down
+                Bitmap bm = new Bitmap(Bounds.Size.Width*AntiAliasLevel, Bounds.Size.Height*AntiAliasLevel);
+                Graphics gr = Graphics.FromImage(bm);
+                gr.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                gr.SmoothingMode = SmoothingMode.HighQuality;
+                gr.CompositingMode = CompositingMode.SourceOver;
+                gr.Clear(Color.Black);
+
+                //letterspacing may be changed during execution
+                double letterSpacing = LetterSpacing;
 
                 if (!IsCancelRequested)
                 {
-                    //draw lines
-                    DrawLines(lines, gr, font, letterSpacing, bm);
-                }
-            }
+                    //split in lines
+                    List<string> lines = LineWrap(gr, font, letterSpacing, bm);
 
-            //scale bitmap down onto result-size bitmap and apply anti-aliasing
-            Bitmap resultBm = new Bitmap(Bounds.Width, Bounds.Height);
-            Graphics resultGr = Graphics.FromImage(resultBm);
-            resultGr.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            resultGr.DrawImage(bm, 0f, 0f, Bounds.Width, Bounds.Height);
-            BufferSurface = Surface.CopyFromBitmap(resultBm);
+                    if (!IsCancelRequested)
+                    {
+                        //draw lines
+                        DrawLines(lines, gr, font, letterSpacing, bm);
+                    }
+                }
+
+                //scale bitmap down onto result-size bitmap and apply anti-aliasing
+                Bitmap resultBm = new Bitmap(Bounds.Width, Bounds.Height);
+                Graphics resultGr = Graphics.FromImage(resultBm);
+                resultGr.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                resultGr.DrawImage(bm, 0f, 0f, Bounds.Width, Bounds.Height);
+                BufferSurface = Surface.CopyFromBitmap(resultBm);
 
 #if DEBUG
             bm.Save("C:\\dev\\buffer.png", ImageFormat.Png);
             resultBm.Save("C:\\dev\\result.png", ImageFormat.Png);
 #endif
 
-            //cleanup
-            gr.Dispose();
-            bm.Dispose();
-            resultGr.Dispose();
-            resultBm.Dispose();
+                //cleanup
+                gr.Dispose();
+                bm.Dispose();
+                resultGr.Dispose();
+                resultBm.Dispose();
+            }
+            catch (OutOfMemoryException)
+            {
+                //scale back anti-aliasing
+                if (AntiAliasLevel > 1)
+                {
+                    AntiAliasLevel--;
+                }
+            }
         }
 
         private void DrawLines(List<string> lines, Graphics gr, Font font, double letterSpacing, Bitmap bm)
