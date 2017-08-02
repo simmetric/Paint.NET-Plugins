@@ -14,13 +14,13 @@
     {
         //configuration options
         public string Text { get; set; }
-        public string FontFamily { get; set; }
+        public FontFamily FontFamily { get; set; }
         public int FontSize { get; set; }
         public double LetterSpacing { get; set; }
         public double LineSpacing { get; set; }
         public int AntiAliasLevel { get; set; }
         public FontStyle FontStyle { get; set; }
-        public Constants.TextAlignmentOptions TextAlign { get; set; }
+        public C.TextAlignmentOptions TextAlign { get; set; }
 
         //flow control
         public bool IsCancelRequested { get; set; }
@@ -34,7 +34,7 @@
 
         public SpacedText()
         {
-            AntiAliasLevel = Constants.DefaultAntiAliasingLevel;
+            AntiAliasLevel = C.DefaultAntiAliasingLevel;
 
             ColorMap[] colorMap = {
                 new ColorMap
@@ -83,12 +83,7 @@
                 resultGr.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 resultGr.DrawImage(bm, 0f, 0f, Bounds.Width, Bounds.Height);
                 BufferSurface = Surface.CopyFromBitmap(resultBm);
-
-#if DEBUG
-            bm.Save("C:\\dev\\buffer.png", ImageFormat.Png);
-            resultBm.Save("C:\\dev\\result.png", ImageFormat.Png);
-#endif
-
+                
                 //cleanup
                 gr.Dispose();
                 bm.Dispose();
@@ -108,47 +103,80 @@
         private void DrawLines(List<string> lines, Graphics gr, Font font, double letterSpacing, Bitmap bm)
         {
             int lineStart = 0;
-            int lineNum = 0;
             foreach (string line in lines)
             {
                 if (IsCancelRequested || lineStart > Bounds.Bottom * AntiAliasLevel)
                 {
                     break;
                 }
-
-                lineNum++;
-
-                if (!line.Equals(string.Empty))
+                
+                if (!string.IsNullOrWhiteSpace(line))
                 {
                     int left = FontSize / 2;
 
-                    //measure text
-                    Size textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
-                    if (TextAlign != Constants.TextAlignmentOptions.Left)
+                    if (TextAlign != C.TextAlignmentOptions.Justify)
                     {
-                        if (TextAlign == Constants.TextAlignmentOptions.Center)
+                        //measure text
+                        Size textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
+                        if (TextAlign == C.TextAlignmentOptions.Center)
                         {
                             left = bm.Width / 2 - textBounds.Width / 2;
                         }
-                        else if (TextAlign == Constants.TextAlignmentOptions.Right)
+                        else if (TextAlign == C.TextAlignmentOptions.Right)
                         {
                             left = bm.Width - (textBounds.Width + FontSize);
                         }
-                    }
 
-                    if (textBounds.Width > 0 && textBounds.Height > 0 && 
-                        textBounds.Width * AntiAliasLevel < Constants.MaxBitmapSize && textBounds.Height * AntiAliasLevel < Constants.MaxBitmapSize)
+                        if (textBounds.Width > 0 && textBounds.Height > 0 &&
+                            textBounds.Width * AntiAliasLevel < C.MaxBitmapSize &&
+                            textBounds.Height * AntiAliasLevel < C.MaxBitmapSize)
+                        {
+                            //create new bitmap for line
+                            Bitmap lineBm = new Bitmap(textBounds.Width * AntiAliasLevel,
+                                textBounds.Height * AntiAliasLevel);
+                            Graphics lineGr = Graphics.FromImage(lineBm);
+                            //draw text
+                            PInvoked.TextOut(lineGr, line, 0, 0, font, letterSpacing);
+
+                            //draw lineBm to bm leaving out black
+                            gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), lineBm.Size), 0, 0,
+                                lineBm.Width,
+                                lineBm.Height, GraphicsUnit.Pixel, imgAttr);
+                            lineGr.Dispose();
+                            lineBm.Dispose();
+                        }
+                    }
+                    else
                     {
+                        //measure text without spaces
+                        string lineWithoutSpaces = line.Replace(" ", string.Empty);
+                        Size textBounds = PInvoked.MeasureString(gr, lineWithoutSpaces, font, letterSpacing);
+                        
+                        //calculate width of spaces
+                        int spaceWidth = FontSize;
+                        if (textBounds.Width > bm.Width / 2)
+                        {
+                            spaceWidth = (bm.Width - textBounds.Width - FontSize) /
+                                         Math.Max(line.Length - lineWithoutSpaces.Length, 1);
+                        }
+
                         //create new bitmap for line
-                        Bitmap lineBm = new Bitmap(textBounds.Width * AntiAliasLevel, textBounds.Height * AntiAliasLevel);
+                        Bitmap lineBm = new Bitmap(bm.Width, bm.Height);
                         Graphics lineGr = Graphics.FromImage(lineBm);
-                        //draw text
-                        PInvoked.TextOut(lineGr, line, 0, 0, font, letterSpacing);
-#if DEBUG
-                        lineBm.Save($"C:\\dev\\line{lineNum}.png", ImageFormat.Png);
-#endif
+
+                        //draw word by word with correct space in between.7
+                        foreach (string word in line.Split(' '))
+                        {
+                            //draw text
+                            PInvoked.TextOut(lineGr, word, left, 0, font, letterSpacing);
+
+                            Size wordBounds = PInvoked.MeasureString(lineGr, word, font, letterSpacing);
+                            left += wordBounds.Width + spaceWidth;
+                        }
+
                         //draw lineBm to bm leaving out black
-                        gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), lineBm.Size), 0, 0, lineBm.Width,
+                        gr.DrawImage(lineBm, new Rectangle(new Point(0, lineStart), lineBm.Size), 0, 0,
+                            lineBm.Width,
                             lineBm.Height, GraphicsUnit.Pixel, imgAttr);
                         lineGr.Dispose();
                         lineBm.Dispose();
