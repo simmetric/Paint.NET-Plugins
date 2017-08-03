@@ -6,7 +6,7 @@ Renders grid-fit anti-aliased text with variable character and line spacing. Wor
 
 Features:
 - Configurable letter spacing and line spacing
-- Left, center or right alignment
+- Left, center, right or justified alignment
 - Text is automatically wrapped to fit the selection
 - Supports all TTF fonts
 - Up to 8x AA (configurable)

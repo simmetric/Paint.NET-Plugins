@@ -29,7 +29,8 @@ namespace SpacedTextPlugin
         {
             Left,
             Center,
-            Right
+            Right,
+            Justify
         }
 
         public const string Space = " ";

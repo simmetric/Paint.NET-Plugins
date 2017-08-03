@@ -7,8 +7,8 @@
     using PaintDotNet.Drawing;
     using PaintDotNet.Effects;
     using PaintDotNet.PropertySystem;
-    using PaintDotNet.SystemLayer;
     using System.Collections.Generic;
+    using System.Drawing.Text;
     using System.Linq;
     using PaintDotNet.IndirectUI;
     using PaintDotNet.Rendering;
@@ -19,15 +19,12 @@
     public class SpacedTextEffectsPlugin : PropertyBasedEffect
     {
         private readonly SpacedText helper;
-        private readonly List<string> fontFamilies;
+        private readonly List<FontFamily> fontFamilies;
 
         public SpacedTextEffectsPlugin() : base("Spaced text", null, "Text Formations", EffectFlags.Configurable)
         {
             fontFamilies =
-                UIUtil.GetGdiFontNames()
-                    .Where(f => f.Item2 == UIUtil.GdiFontType.TrueType)
-                    .Select(f => f.Item1).OrderBy(f => f)
-                    .ToList();
+                new InstalledFontCollection().Families.ToList();
             helper = new SpacedText();
         }
         
@@ -40,7 +37,7 @@
                 new DoubleProperty(C.Properties.LetterSpacing.ToString(), C.DefaultLetterSpacing, C.MinLetterSpacing, C.MaxLetterSpacing),
                 new DoubleProperty(C.Properties.LineSpacing.ToString(), C.DefaultLineSpacing, C.MinLineSpacing, C.MaxLineSpacing),
                 new Int32Property(C.Properties.AntiAliasLevel.ToString(), C.DefaultAntiAliasingLevel, C.MinAntiAliasingLevel, C.MaxAntiAliasingLevel),
-                new StaticListChoiceProperty(C.Properties.FontFamily.ToString(), fontFamilies.ToArray<object>(), fontFamilies.FirstIndexWhere(f => f == "Arial" || f == "Helvetica")),
+                new StaticListChoiceProperty(C.Properties.FontFamily.ToString(), fontFamilies.ToArray<object>(), fontFamilies.FirstIndexWhere(f => f.Name == "Arial" || f.Name == "Helvetica")),
                 new StaticListChoiceProperty(C.Properties.TextAlignment, Enum.GetNames(typeof(C.TextAlignmentOptions)).ToArray<object>(), 0),
                 new BooleanProperty(C.Properties.Bold.ToString(), false),
                 new BooleanProperty(C.Properties.Italic.ToString(), false),
@@ -53,29 +50,35 @@
         {
             ControlInfo configUI = CreateDefaultConfigUI(props);
 
-            configUI.SetPropertyControlValue(Constants.Properties.Text.ToString(), ControlInfoPropertyNames.Multiline, true);
-            configUI.SetPropertyControlValue(Constants.Properties.Bold.ToString(), ControlInfoPropertyNames.DisplayName, "Formatting");
-            configUI.SetPropertyControlValue(Constants.Properties.Bold.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Bold.ToString());
-            configUI.SetPropertyControlValue(Constants.Properties.Italic.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
-            configUI.SetPropertyControlValue(Constants.Properties.Italic.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Italic.ToString());
-            configUI.SetPropertyControlValue(Constants.Properties.Underline.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
-            configUI.SetPropertyControlValue(Constants.Properties.Underline.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Underline.ToString());
-            configUI.SetPropertyControlValue(Constants.Properties.Strikeout.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
-            configUI.SetPropertyControlValue(Constants.Properties.Strikeout.ToString(), ControlInfoPropertyNames.Description, Constants.Properties.Strikeout.ToString());
+            configUI.SetPropertyControlValue(C.Properties.Text.ToString(), ControlInfoPropertyNames.Multiline, true);
+            configUI.SetPropertyControlValue(C.Properties.Bold.ToString(), ControlInfoPropertyNames.DisplayName, "Formatting");
+            configUI.SetPropertyControlValue(C.Properties.Bold.ToString(), ControlInfoPropertyNames.Description, C.Properties.Bold.ToString());
+            configUI.SetPropertyControlValue(C.Properties.Italic.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(C.Properties.Italic.ToString(), ControlInfoPropertyNames.Description, C.Properties.Italic.ToString());
+            configUI.SetPropertyControlValue(C.Properties.Underline.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(C.Properties.Underline.ToString(), ControlInfoPropertyNames.Description, C.Properties.Underline.ToString());
+            configUI.SetPropertyControlValue(C.Properties.Strikeout.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(C.Properties.Strikeout.ToString(), ControlInfoPropertyNames.Description, C.Properties.Strikeout.ToString());
 
-            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LetterSpacing.ToString(),
                 ControlInfoPropertyNames.SliderLargeChange, 0.25);
-            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LetterSpacing.ToString(),
                 ControlInfoPropertyNames.SliderSmallChange, 0.01);
-            configUI.SetPropertyControlValue(Constants.Properties.LetterSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LetterSpacing.ToString(),
                 ControlInfoPropertyNames.UpDownIncrement, 0.01);
 
-            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LineSpacing.ToString(),
                 ControlInfoPropertyNames.SliderLargeChange, 0.25);
-            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LineSpacing.ToString(),
                 ControlInfoPropertyNames.SliderSmallChange, 0.01);
-            configUI.SetPropertyControlValue(Constants.Properties.LineSpacing.ToString(),
+            configUI.SetPropertyControlValue(C.Properties.LineSpacing.ToString(),
                 ControlInfoPropertyNames.UpDownIncrement, 0.01);
+
+            PropertyControlInfo fontControl = configUI.FindControlForPropertyName(C.Properties.FontFamily);
+            foreach (FontFamily fontFamily in fontFamilies)
+            {
+                fontControl.SetValueDisplayName(fontFamily, fontFamily.Name);
+            }
 
             return configUI;
         }
@@ -83,30 +86,29 @@
         protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
         {
             helper.Text = newToken.GetProperty<StringProperty>(C.Properties.Text.ToString()).Value;
-            helper.FontFamily = newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value.ToString();
+            helper.FontFamily = (FontFamily)newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value;
             helper.FontSize = newToken.GetProperty<Int32Property>(C.Properties.FontSize.ToString()).Value;
             helper.LetterSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LetterSpacing.ToString()).Value;
             helper.LineSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LineSpacing.ToString()).Value;
             helper.AntiAliasLevel = newToken.GetProperty<Int32Property>(C.Properties.AntiAliasLevel.ToString()).Value;
-            var fontFamily = new FontFamily(helper.FontFamily);
-            helper.FontStyle = fontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : fontFamily.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Italic;
+            helper.FontStyle = helper.FontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : helper.FontFamily.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Italic;
             helper.TextAlign = (C.TextAlignmentOptions) Enum.Parse(typeof(C.TextAlignmentOptions),
                 newToken
                     .GetProperty<StaticListChoiceProperty>(C.Properties.TextAlignment.ToString())
                     .Value.ToString());
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Bold.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Bold))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Bold.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Bold))
             {
                 helper.FontStyle |= FontStyle.Bold;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Italic.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Italic))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Italic.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Italic))
             {
                 helper.FontStyle |= FontStyle.Italic;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Underline.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Underline))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Underline.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Underline))
             {
                 helper.FontStyle |= FontStyle.Underline;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Strikeout.ToString()).Value && fontFamily.IsStyleAvailable(FontStyle.Strikeout))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Strikeout.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Strikeout))
             {
                 helper.FontStyle |= FontStyle.Strikeout;
             }
@@ -132,7 +134,7 @@
                     renderBounds.Intersect(renderRects[i]);
 
                     //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
-                    CopyRectangle(renderBounds, helper.BufferSurface, base.DstArgs.Surface);
+                    CopyRectangle(renderBounds, helper.BufferSurface, DstArgs.Surface);
 
                     //clear the remainder
                     DstArgs.Surface.Clear(new RectInt32(
@@ -156,7 +158,7 @@
                 for (int x = area.Left; x < area.Right; x++)
                 {
                     //use the buffer as an alpha map
-                    ColorBgra color = base.EnvironmentParameters.PrimaryColor;
+                    ColorBgra color = EnvironmentParameters.PrimaryColor;
                     ColorBgra opacitySource = buffer[x - helper.Bounds.Left, y - helper.Bounds.Top];
                     color.A = opacitySource.R;
                     dest[x, y] = color;
