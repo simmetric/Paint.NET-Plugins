@@ -26,6 +26,7 @@
         public bool IsCancelRequested { get; set; }
 
         //public result
+        public PdnRegion SelectionRegion { get; private set; }
         public Rectangle Bounds { get; private set; }
         public Surface BufferSurface { get; private set; }
 
@@ -47,11 +48,12 @@
             imgAttr.SetRemapTable(colorMap);
         }
 
-        public void RenderText(Rectangle bounds)
+        public void RenderText(PdnRegion selection)
         {
             try
             {
-                Bounds = bounds;
+                SelectionRegion = selection;
+                Bounds = selection.GetBoundsInt();
                 Font font = new Font(FontFamily, FontSize*AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
 
                 //render text on larger bitmap so it can be anti-aliased while scaling down
@@ -62,18 +64,15 @@
                 gr.CompositingMode = CompositingMode.SourceOver;
                 gr.Clear(Color.Black);
 
-                //letterspacing may be changed during execution
-                double letterSpacing = LetterSpacing;
-
                 if (!IsCancelRequested)
                 {
                     //split in lines
-                    List<string> lines = LineWrap(gr, font, letterSpacing, bm);
+                    List<LineInfo> lines = LineWrap(gr, font, bm);
 
                     if (!IsCancelRequested)
                     {
                         //draw lines
-                        DrawLines(lines, gr, font, letterSpacing, bm);
+                        DrawLines(lines, gr, font, bm);
                     }
                 }
 
@@ -100,46 +99,45 @@
             }
         }
 
-        private void DrawLines(List<string> lines, Graphics gr, Font font, double letterSpacing, Bitmap bm)
+        private void DrawLines(List<LineInfo> lines, Graphics gr, Font font, Bitmap bm)
         {
-            int lineStart = 0;
-            foreach (string line in lines)
+            foreach (LineInfo line in lines)
             {
-                if (IsCancelRequested || lineStart > Bounds.Bottom * AntiAliasLevel)
+                if (IsCancelRequested || line.LineBounds.Top > Bounds.Bottom * AntiAliasLevel)
                 {
                     break;
                 }
                 
-                if (!string.IsNullOrWhiteSpace(line))
+                if (!string.IsNullOrWhiteSpace(line.Text))
                 {
-                    int left = FontSize / 2;
+                    int left = (line.LineBounds.Left * AntiAliasLevel) + (FontSize / 2);
 
                     if (TextAlign != C.TextAlignmentOptions.Justify)
                     {
-                        //measure text
-                        Size textBounds = PInvoked.MeasureString(gr, line, font, letterSpacing);
+                        //apply alignment: determine horizontal start position
                         if (TextAlign == C.TextAlignmentOptions.Center)
                         {
-                            left = bm.Width / 2 - textBounds.Width / 2;
+                            left = line.LineBounds.Left + (bm.Width / 2 - line.TextSize.Width / 2);
                         }
                         else if (TextAlign == C.TextAlignmentOptions.Right)
                         {
-                            left = bm.Width - (textBounds.Width + FontSize);
+                            left = line.LineBounds.Left + (bm.Width - (line.TextSize.Width + FontSize));
                         }
 
-                        if (textBounds.Width > 0 && textBounds.Height > 0 &&
-                            textBounds.Width * AntiAliasLevel < C.MaxBitmapSize &&
-                            textBounds.Height * AntiAliasLevel < C.MaxBitmapSize)
+                        if (line.TextSize.Width > 0 && line.TextSize.Height > 0 &&
+                            line.TextSize.Width * AntiAliasLevel < C.MaxBitmapSize &&
+                            line.TextSize.Height * AntiAliasLevel < C.MaxBitmapSize)
                         {
                             //create new bitmap for line
-                            Bitmap lineBm = new Bitmap(textBounds.Width * AntiAliasLevel,
-                                textBounds.Height * AntiAliasLevel);
+                            Bitmap lineBm = new Bitmap(line.TextSize.Width * AntiAliasLevel,
+                                line.TextSize.Height * AntiAliasLevel);
                             Graphics lineGr = Graphics.FromImage(lineBm);
                             //draw text
-                            PInvoked.TextOut(lineGr, line, 0, 0, font, letterSpacing);
+                            PInvoked.TextOut(lineGr, line.Text, 0, 0, font, LetterSpacing);
 
                             //draw lineBm to bm leaving out black
-                            gr.DrawImage(lineBm, new Rectangle(new Point(left, lineStart), lineBm.Size), 0, 0,
+                            gr.DrawRectangle(Pens.Gray, line.LineBounds);
+                            gr.DrawImage(lineBm, new Rectangle(new Point(left * AntiAliasLevel, line.LineBounds.Top * AntiAliasLevel), lineBm.Size), 0, 0,
                                 lineBm.Width,
                                 lineBm.Height, GraphicsUnit.Pixel, imgAttr);
                             lineGr.Dispose();
@@ -149,69 +147,85 @@
                     else
                     {
                         //measure text without spaces
-                        string lineWithoutSpaces = line.Replace(" ", string.Empty);
-                        Size textBounds = PInvoked.MeasureString(gr, lineWithoutSpaces, font, letterSpacing);
+                        string lineWithoutSpaces = line.Text.Replace(" ", string.Empty);
+                        Size textBounds = PInvoked.MeasureString(gr, lineWithoutSpaces, font, LetterSpacing);
                         
                         //calculate width of spaces
                         int spaceWidth = FontSize;
                         if (textBounds.Width > bm.Width / 2)
                         {
                             spaceWidth = (bm.Width - textBounds.Width - FontSize) /
-                                         Math.Max(line.Length - lineWithoutSpaces.Length, 1);
+                                         Math.Max(line.Text.Length - lineWithoutSpaces.Length, 1);
                         }
 
                         //create new bitmap for line
                         Bitmap lineBm = new Bitmap(bm.Width, bm.Height);
                         Graphics lineGr = Graphics.FromImage(lineBm);
 
-                        //draw word by word with correct space in between.7
-                        foreach (string word in line.Split(' '))
+                        //draw word by word with correct space in between
+                        foreach (string word in line.Text.Split(' '))
                         {
                             //draw text
-                            PInvoked.TextOut(lineGr, word, left, 0, font, letterSpacing);
+                            PInvoked.TextOut(lineGr, word, left, 0, font, LetterSpacing);
 
-                            Size wordBounds = PInvoked.MeasureString(lineGr, word, font, letterSpacing);
+                            Size wordBounds = PInvoked.MeasureString(lineGr, word, font, LetterSpacing);
                             left += wordBounds.Width + spaceWidth;
                         }
 
                         //draw lineBm to bm leaving out black
-                        gr.DrawImage(lineBm, new Rectangle(new Point(0, lineStart), lineBm.Size), 0, 0,
+                        gr.DrawImage(lineBm, new Rectangle(new Point(0, line.LineBounds.Top), lineBm.Size), 0, 0,
                             lineBm.Width,
                             lineBm.Height, GraphicsUnit.Pixel, imgAttr);
                         lineGr.Dispose();
                         lineBm.Dispose();
                     }
                 }
-
-                lineStart += font.Height + (int)Math.Round(font.Height * LineSpacing);
             }
         }
 
-        private List<string> LineWrap(Graphics gr, Font font, double letterSpacing, Bitmap bm)
+        private List<LineInfo> LineWrap(Graphics gr, Font font, Bitmap bm)
         {
             string[] words = Text.Replace(Environment.NewLine, " " + Environment.NewLine + C.Space)
                 .Split(new[] {C.SpaceChar}, StringSplitOptions.RemoveEmptyEntries);
-            List<string> lines = new List<string>();
 
+            List<LineInfo> lines = new List<LineInfo>();
+
+            int y = 0;
             string currentLine = words.Any() ? words.First() + C.Space : string.Empty;
+
+            Rectangle currentLineBounds = DetermineLineBounds(TraceLineExtent(y), TraceLineExtent(y + font.Height));
 
             foreach (string word in words.Skip(1))
             {
                 //if manual line break: end current line and start new line
                 if (word.Equals(Environment.NewLine))
                 {
-                    lines.Add(currentLine.Trim());
+                    lines.Add(new LineInfo
+                    {
+                        Text = currentLine.Trim(),
+                        LineBounds = currentLineBounds,
+                        TextSize = new Size(1, font.Height)
+                    });
+                    y += font.Height + (int)Math.Round(font.Height * LineSpacing);
                     currentLine = string.Empty;
                     continue;
                 }
 
                 //measure currentline + word
                 //else add word to currentline
-                if (PInvoked.MeasureString(gr, currentLine + word, font, letterSpacing).Width > bm.Width - FontSize)
+                Size textBounds = PInvoked.MeasureString(gr, currentLine + word, font, LetterSpacing);
+                if (textBounds.Width > (currentLineBounds.Width * AntiAliasLevel) - FontSize)
                 {
                     //if outside bounds, then add line
-                    lines.Add(currentLine.Trim());
+                    lines.Add(new LineInfo
+                    {
+                        Text = currentLine.Trim(),
+                        LineBounds = currentLineBounds,
+                        TextSize = textBounds
+                    });
+                    y += font.Height + (int)Math.Round(font.Height * LineSpacing);
                     currentLine = word + C.Space;
+                    currentLineBounds = DetermineLineBounds(TraceLineExtent(y), TraceLineExtent(y + font.Height));
                 }
                 else
                 {
@@ -221,9 +235,58 @@
             //add currentline
             if (!string.IsNullOrEmpty(currentLine))
             {
-                lines.Add(currentLine.Trim());
+                Size textBounds = PInvoked.MeasureString(gr, currentLine, font, LetterSpacing);
+                lines.Add(new LineInfo
+                {
+                    Text = currentLine.Trim(),
+                    LineBounds = currentLineBounds,
+                    TextSize = textBounds
+                });
             }
             return lines;
+        }
+
+        private Rectangle DetermineLineBounds(Extent topLine, Extent bottomLine)
+        {
+            int maxLeftX = Math.Max(topLine.Left, bottomLine.Left);
+            int minRightX = Math.Min(topLine.Right, bottomLine.Right);
+            return new Rectangle(maxLeftX, topLine.VerticalPosition, minRightX-maxLeftX, bottomLine.VerticalPosition);
+        }
+
+        /// <summary>
+        /// Returns the left and right visible extents of the current line in relation to the selection bounds
+        /// </summary>
+        /// <param name="lineY"></param>
+        /// <returns></returns>
+        private Extent TraceLineExtent(int lineY)
+        {
+            int leftX = Bounds.Left;
+            int rightX = Bounds.Right;
+
+            lineY += Bounds.Top;
+
+            //trace line inward from left to right
+            while (leftX < rightX)
+            {
+                if (SelectionRegion.IsVisible(leftX, lineY))
+                {
+                    break;
+                }
+
+                leftX++;
+            }
+
+            while (rightX > 0)
+            {
+                if (SelectionRegion.IsVisible(rightX, lineY))
+                {
+                    break;
+                }
+
+                rightX--;
+            }
+
+            return new Extent(leftX - Bounds.Left, rightX - Bounds.Left, lineY - Bounds.Top);
         }
 
         public void Dispose()

@@ -73,7 +73,7 @@
                 ControlInfoPropertyNames.SliderSmallChange, 0.01);
             configUI.SetPropertyControlValue(C.Properties.LineSpacing.ToString(),
                 ControlInfoPropertyNames.UpDownIncrement, 0.01);
-
+            
             PropertyControlInfo fontControl = configUI.FindControlForPropertyName(C.Properties.FontFamily);
             foreach (FontFamily fontFamily in fontFamilies)
             {
@@ -115,7 +115,7 @@
 
             base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
             helper.IsCancelRequested = IsCancelRequested;
-            helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt());
+            helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds));
         }
 
         protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)

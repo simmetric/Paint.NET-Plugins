@@ -66,11 +66,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="EffectConfigDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Extent.cs" />
     <Compile Include="Interop.cs" />
+    <Compile Include="LineInfo.cs" />
     <Compile Include="PInvoked.cs" />
     <Compile Include="SpacedText.cs" />
     <Compile Include="SpacedTextEffectsPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SpacedTextEffectsPluginV2.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
