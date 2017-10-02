@@ -66,9 +66,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
-    <Compile Include="EffectConfigDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Extent.cs" />
     <Compile Include="Interop.cs" />

@@ -109,7 +109,7 @@
                 var lineBounds = line.LineBounds.Multiply(AntiAliasLevel);
                 var textSize = line.TextSize.Multiply(AntiAliasLevel);
 
-                if (IsCancelRequested || lineBounds.Top > Bounds.Bottom * AntiAliasLevel)
+                if (IsCancelRequested || lineBounds.Top > Bounds.Multiply(AntiAliasLevel).Bottom)
                 {
                     break;
                 }
@@ -173,12 +173,12 @@
                         int spaceWidth = FontSize * AntiAliasLevel;
                         if (textBounds.Width > lineBounds.Width / 2)
                         {
-                            spaceWidth = ((lineBounds.Width - textBounds.Width) - spaceWidth) /
+                            spaceWidth = (lineBounds.Width - textBounds.Width - spaceWidth) /
                                          Math.Max(line.Text.Length - lineWithoutSpaces.Length, 1);
                         }
 
                         //create new bitmap for line
-                        Bitmap lineBm = new Bitmap(lineBounds.Width, textBounds.Height);
+                        Bitmap lineBm = new Bitmap(lineBounds.Left + lineBounds.Width, textBounds.Height);
                         Graphics lineGr = Graphics.FromImage(lineBm);
 
                         //draw word by word with correct space in between
@@ -195,7 +195,7 @@
                         gr.DrawImage(lineBm, 
                             new Rectangle(
                                 new Point(0, lineBounds.Top), 
-                                new Size(lineBounds.Width, textBounds.Height)), 
+                                new Size(lineBounds.Left + lineBounds.Width, textBounds.Height)), 
                             0, 0,
                             lineBm.Width,
                             lineBm.Height, GraphicsUnit.Pixel, imgAttr);
@@ -215,19 +215,19 @@
 
             int y = 0;
             int lineIncrement = font.Height + (int) Math.Round(font.Height * LineSpacing);
-            string currentLine = words.Any() ? words.First() + C.Space : string.Empty;
+            string currentLine = string.Empty;
 
             Rectangle currentLineBounds = DetermineLineBounds(TraceLineExtent(y), TraceLineExtent(y + font.Height));
 
-            foreach (string word in words.Skip(1))
+            foreach (string word in words)
             {
                 //if manual line break: end current line and start new line
                 if (word.Equals(Environment.NewLine))
                 {
-                    AddLine(gr, font, currentLine, lines, currentLineBounds);
+                    AddLine(PInvoked.MeasureString(gr, currentLine, font, LetterSpacing), currentLine, lines, currentLineBounds);
                     y += lineIncrement;
-                    currentLine = string.Empty;
                     currentLineBounds = DetermineLineBounds(TraceLineExtent(y), TraceLineExtent(y + font.Height));
+                    currentLine = string.Empty;
                     continue;
                 }
 
@@ -237,10 +237,10 @@
                 if (textBounds.Width > currentLineBounds.Width)
                 {
                     //if outside bounds, then add line
-                    AddLine(gr, font, currentLine, lines, currentLineBounds);
+                    AddLine(PInvoked.MeasureString(gr, currentLine, font, LetterSpacing), currentLine, lines, currentLineBounds);
                     y += lineIncrement;
-                    currentLine = word + C.Space;
                     currentLineBounds = DetermineLineBounds(TraceLineExtent(y), TraceLineExtent(y + font.Height));
+                    currentLine = word + C.Space;
                 }
                 else
                 {
@@ -250,14 +250,13 @@
             //add currentline
             if (!string.IsNullOrEmpty(currentLine))
             {
-                AddLine(gr, font, currentLine, lines, currentLineBounds);
+                AddLine(PInvoked.MeasureString(gr, currentLine, font, LetterSpacing), currentLine, lines, currentLineBounds);
             }
             return lines;
         }
 
-        private void AddLine(Graphics gr, Font font, string currentLine, List<LineInfo> lines, Rectangle currentLineBounds)
+        private void AddLine(Size textBounds, string currentLine, List<LineInfo> lines, Rectangle currentLineBounds)
         {
-            Size textBounds = PInvoked.MeasureString(gr, currentLine, font, LetterSpacing);
             lines.Add(new LineInfo
             {
                 Text = currentLine.Trim(),
