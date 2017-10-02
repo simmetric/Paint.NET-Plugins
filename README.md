@@ -1,7 +1,7 @@
 # Paint.NET-Plugins
 Plugins for Paint .NET
 
-##Spaced text
+## Spaced text
 Renders grid-fit anti-aliased text with variable character and line spacing. Works with or without a selection area.
 
 Features:
