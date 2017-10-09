@@ -1,20 +1,19 @@
-﻿namespace SpacedTextPlugin
+﻿namespace SpacedTextPlugin.Interop
 {
     using System;
     using System.Drawing;
     using System.Drawing.Drawing2D;
 
-    public class PInvoked
+    internal static class PInvoked
     {
         public static void TextOut(Graphics g, string text, int x, int y, Font font, double letterSpacing)
         {
             g.PixelOffsetMode = PixelOffsetMode.Half;
-            IntPtr hdc = default(IntPtr);
             IntPtr fontPtr = default(IntPtr);
             try
             {
                 //Grab the Graphic object's handle
-                hdc = g.GetHdc();
+                IntPtr hdc = g.GetHdc();
                 //Set the current GDI font
                 fontPtr = Interop.SelectObject(hdc, font.ToHfont());
                 //Set the drawing surface background color
@@ -36,13 +35,12 @@
 
         public static Size MeasureString(Graphics g, string text, Font font, double letterSpacing)
         {
-            IntPtr hdc = default(IntPtr);
             IntPtr fontPtr = default(IntPtr);
             Size size = new Size();
             try
             {
                 //Grab the Graphic object's handle
-                hdc = g.GetHdc();
+                IntPtr hdc = g.GetHdc();
                 //Set the current GDI font
                 fontPtr = Interop.SelectObject(hdc, font.ToHfont());
                 //Set the kerning

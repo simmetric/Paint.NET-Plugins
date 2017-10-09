@@ -1,8 +1,8 @@
-﻿namespace SpacedTextPlugin
+﻿namespace SpacedTextPlugin.Data
 {
     using System.Drawing;
 
-    public class LineInfo
+    public class LineData
     {
         public string Text { get; set; }
         public Rectangle LineBounds { get; set; }

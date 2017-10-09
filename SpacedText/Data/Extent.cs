@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SpacedTextPlugin
+﻿namespace SpacedTextPlugin.Data
 {
     using System.Drawing;
 
@@ -15,21 +9,9 @@ namespace SpacedTextPlugin
         public int Right { get; private set; }
         public int Width { get; private set; }
 
-        public Point Start
-        {
-            get
-            {
-                return new Point(Left, VerticalPosition);
-            }
-        }
+        public Point Start => new Point(Left, VerticalPosition);
 
-        public Point End
-        {
-            get
-            {
-                return new Point(Right, VerticalPosition);
-            }
-        }
+        public Point End => new Point(Right, VerticalPosition);
 
         public Extent(int left, int right, int y)
         {
@@ -37,6 +19,16 @@ namespace SpacedTextPlugin
             Right = right;
             Width = right - left;
             VerticalPosition = y;
+        }
+
+        public Extent Multiply(int factor)
+        {
+            Left *= factor;
+            Right *= factor;
+            Width = Right - Left;
+            VerticalPosition *= factor;
+
+            return this;
         }
     }
 }
