@@ -7,10 +7,9 @@
     using System.Drawing.Imaging;
     using System.Drawing.Text;
     using PaintDotNet;
-    using PaintDotNet.Concurrency;
     using SpacedTextPlugin.Data;
     using SpacedTextPlugin.Interop;
-
+    
     internal class Renderer : IDisposable
     {
         private readonly Rectangle selectionBounds;
@@ -57,25 +56,11 @@
 
                     if (settings.TextAlign != Constants.TextAlignmentOptions.Justify)
                     {
-                        //draw line on line bitmap
                         PInvoked.TextOut(lineGraphics, line.Text, 0, 0, font, settings.LetterSpacing);
                     }
                     else
                     {
-                        //Justify
-                        var lineTextWithoutSpaces = line.Text.Replace(Constants.Space, string.Empty);
-                        var lineSizeWithoutSpaces = PInvoked.MeasureString(lineGraphics, lineTextWithoutSpaces, font,
-                            settings.LetterSpacing);
-                        var spaceWidth = (line.TextSize.Width - lineSizeWithoutSpaces.Width) /
-                                         Math.Max((line.Text.Length - lineTextWithoutSpaces.Length), 1);
-                        var x = 0;
-
-                        foreach (string word in line.Text.Split(Constants.SpaceChar))
-                        {
-                            var wordSize = PInvoked.MeasureString(lineGraphics, word, font, settings.LetterSpacing);
-                            PInvoked.TextOut(lineGraphics, word, x, 0, font, settings.LetterSpacing);
-                            x += wordSize.Width + spaceWidth;
-                        }
+                        Justify(line, lineGraphics);
                     }
 
                     //draw line bitmap to image
@@ -101,6 +86,7 @@
                         line.LineBounds.Y + line.TextSize.Height / 2
                     );
 #endif
+                    lineGraphics.Dispose();
                 }
             }
 
@@ -111,6 +97,30 @@
             resultGraphics.DrawImage(image, 0, 0, selectionBounds.Width, selectionBounds.Height);
 
             return resultImage;
+        }
+
+        private void Justify(LineData line, Graphics lineGraphics)
+        {
+            var lineTextWithoutSpaces = line.Text.Replace(Constants.Space, string.Empty);
+            var lineSizeWithoutSpaces = PInvoked.MeasureString(lineGraphics, lineTextWithoutSpaces, font,
+                settings.LetterSpacing);
+            var spaceWidth = (line.TextSize.Width - lineSizeWithoutSpaces.Width) /
+                             Math.Max((line.Text.Length - lineTextWithoutSpaces.Length), 1);
+            if (spaceWidth > font.Size * 3)
+            {
+                PInvoked.TextOut(lineGraphics, line.Text, 0, 0, font, settings.LetterSpacing);
+            }
+            else
+            {
+                var x = 0;
+
+                foreach (string word in line.Text.Split(Constants.SpaceChar))
+                {
+                    var wordSize = PInvoked.MeasureString(lineGraphics, word, font, settings.LetterSpacing);
+                    PInvoked.TextOut(lineGraphics, word, x, 0, font, settings.LetterSpacing);
+                    x += wordSize.Width + spaceWidth;
+                }
+            }
         }
 
         public void Dispose()

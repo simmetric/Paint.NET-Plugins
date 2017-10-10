@@ -21,6 +21,11 @@
         private readonly Graphics graphics;
         private readonly Rectangle scaledBounds;
 
+        //constants
+        private readonly int lineIncrement;
+
+        private readonly int horizontalMargin;
+
         //result
         public ICollection<LineData> Lines { get; }
 
@@ -37,12 +42,16 @@
             image = new Bitmap(scaledBounds.Width, scaledBounds.Height);
             graphics = Graphics.FromImage(image);
 
+            //constants
+            lineIncrement = (int) Math.Round(font.Height + font.Height * settings.LineSpacing);
+            horizontalMargin = (int)Math.Round(font.Size / 10f);
+
             Lines = new List<LineData>();
         }
 
         public void SetText()
         {
-            IEnumerable<string> words = settings.Text.Split(' ');
+            IEnumerable<string> words = settings.Text.Replace(Environment.NewLine, Constants.Space + Environment.NewLine + Constants.Space).Split(' ');
             StringBuilder currentLineText = new StringBuilder();
             int y = 0;
             LineData currentLine = StartNewLine(ref y);
@@ -50,14 +59,14 @@
             //until all words are placed or y is outside scaledBounds
             foreach (string word in words)
             {
-                if (y > scaledBounds.Height)
+                if (y > scaledBounds.Bottom + lineIncrement)
                 {
                     break;
                 }
 
                 if (word.Equals(Environment.NewLine))
                 {
-                    AddLine(currentLine, currentLineText);
+                    EndLine(currentLine, currentLineText);
 
                     //start new line
                     currentLineText.Clear();
@@ -70,7 +79,7 @@
                     settings.LetterSpacing);
                 if (textSize.Width > currentLine.LineBounds.Width)
                 {
-                    AddLine(currentLine, currentLineText);
+                    EndLine(currentLine, currentLineText);
 
                     //start new line
                     currentLineText.Clear();
@@ -84,17 +93,12 @@
             }
             if (currentLine != null && currentLineText.Length > 0)
             {
-                AddLine(currentLine, currentLineText);
+                EndLine(currentLine, currentLineText);
             }
         }
 
         public void AlignText()
         {
-            if (Lines.Count == 0)
-            {
-                throw new InvalidOperationException("Must call SetText before calling AlignText");
-            }
-
             foreach (var line in Lines)
             {
                 var lineBounds = line.LineBounds;
@@ -127,7 +131,21 @@
             }
         }
 
-        private void AddLine(LineData currentLine, StringBuilder currentLineText)
+        private LineData StartNewLine(ref int y)
+        {
+            //find line extents
+            LineData newLine = new LineData
+            {
+                LineBounds = DetermineLineBounds(
+                    TraceLineExtent(y),
+                    TraceLineExtent(y + font.Height))
+            };
+            y += lineIncrement;
+
+            return newLine;
+        }
+
+        private void EndLine(LineData currentLine, StringBuilder currentLineText)
         {
             currentLine.Text = currentLineText.ToString().Trim();
             if (!string.IsNullOrWhiteSpace(currentLine.Text))
@@ -138,24 +156,10 @@
             }
         }
 
-        private LineData StartNewLine(ref int y)
-        {
-            //find line extents
-            LineData newLine = new LineData
-            {
-                LineBounds = DetermineLineBounds(
-                    TraceLineExtent(y),
-                    TraceLineExtent(y + font.Height))
-            };
-            y += (int)Math.Round(font.Height + font.Height * settings.LineSpacing);
-
-            return newLine;
-        }
-
         private Rectangle DetermineLineBounds(Extent topLine, Extent bottomLine)
         {
-            int maxLeftX = Math.Max(topLine.Left, bottomLine.Left);
-            int minRightX = Math.Max(0, Math.Min(topLine.Right, bottomLine.Right));
+            int maxLeftX = Math.Max(topLine.Left, bottomLine.Left) + horizontalMargin;
+            int minRightX = Math.Max(0, Math.Min(topLine.Right, bottomLine.Right) - horizontalMargin);
             return new Rectangle(maxLeftX, topLine.VerticalPosition, Math.Max(1, (minRightX - maxLeftX)),
                 (bottomLine.VerticalPosition - topLine.VerticalPosition));
         }
@@ -167,11 +171,17 @@
         /// <returns>The visible extent of the line in AA scale-coordinates</returns>
         private Extent TraceLineExtent(int scaledLineY)
         {
-            int leftX = bounds.Left;
-            int rightX = bounds.Right;
 
             int lineY = (scaledLineY / settings.AntiAliasLevel) + bounds.Top;
 
+            //if y falls outside selection, simply return entire line
+            if (lineY < bounds.Top || lineY > bounds.Bottom)
+            {
+                return new Extent(bounds.Left, bounds.Right, lineY - bounds.Top).Multiply(settings.AntiAliasLevel);
+            }
+
+            int leftX = bounds.Left;
+            int rightX = bounds.Right;
             //trace line inward from left to right
             while (leftX < rightX)
             {
