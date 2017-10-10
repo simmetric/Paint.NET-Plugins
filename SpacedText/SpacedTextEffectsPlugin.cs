@@ -12,8 +12,9 @@
     using System.Linq;
     using PaintDotNet.IndirectUI;
     using PaintDotNet.Rendering;
+    using SpacedTextPlugin.Data;
     using FontStyle = System.Drawing.FontStyle;
-    using C = Constants;
+    using C = SpacedTextPlugin.Data.Constants;
 
     [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Spaced text")]
     public class SpacedTextEffectsPlugin : PropertyBasedEffect
@@ -27,7 +28,7 @@
                 new InstalledFontCollection().Families.ToList();
             helper = new SpacedText();
         }
-        
+
         protected override PropertyCollection OnCreatePropertyCollection()
         {
             return new PropertyCollection(new List<Property>
@@ -52,6 +53,7 @@
 
             configUI.SetPropertyControlValue(C.Properties.Text.ToString(), ControlInfoPropertyNames.Multiline, true);
             configUI.SetPropertyControlValue(C.Properties.Bold.ToString(), ControlInfoPropertyNames.DisplayName, "Formatting");
+#pragma warning disable S4142 // Duplicate values should not be passed as arguments
             configUI.SetPropertyControlValue(C.Properties.Bold.ToString(), ControlInfoPropertyNames.Description, C.Properties.Bold.ToString());
             configUI.SetPropertyControlValue(C.Properties.Italic.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
             configUI.SetPropertyControlValue(C.Properties.Italic.ToString(), ControlInfoPropertyNames.Description, C.Properties.Italic.ToString());
@@ -59,6 +61,7 @@
             configUI.SetPropertyControlValue(C.Properties.Underline.ToString(), ControlInfoPropertyNames.Description, C.Properties.Underline.ToString());
             configUI.SetPropertyControlValue(C.Properties.Strikeout.ToString(), ControlInfoPropertyNames.DisplayName, string.Empty);
             configUI.SetPropertyControlValue(C.Properties.Strikeout.ToString(), ControlInfoPropertyNames.Description, C.Properties.Strikeout.ToString());
+#pragma warning restore S4142 // Duplicate values should not be passed as arguments
 
             configUI.SetPropertyControlValue(C.Properties.LetterSpacing.ToString(),
                 ControlInfoPropertyNames.SliderLargeChange, 0.25);
@@ -85,37 +88,43 @@
 
         protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
         {
-            helper.Text = newToken.GetProperty<StringProperty>(C.Properties.Text.ToString()).Value;
-            helper.FontFamily = (FontFamily)newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value;
-            helper.FontSize = newToken.GetProperty<Int32Property>(C.Properties.FontSize.ToString()).Value;
-            helper.LetterSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LetterSpacing.ToString()).Value;
-            helper.LineSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LineSpacing.ToString()).Value;
-            helper.AntiAliasLevel = newToken.GetProperty<Int32Property>(C.Properties.AntiAliasLevel.ToString()).Value;
-            helper.FontStyle = helper.FontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : helper.FontFamily.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Italic;
-            helper.TextAlign = (C.TextAlignmentOptions) Enum.Parse(typeof(C.TextAlignmentOptions),
+            base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
+            helper.IsCancelRequested = IsCancelRequested;
+            helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds), GetSettings(newToken));
+        }
+
+        private Settings GetSettings(PropertyBasedEffectConfigToken newToken)
+        {
+            var settings = new Settings();
+            settings.Text = newToken.GetProperty<StringProperty>(C.Properties.Text.ToString()).Value;
+            settings.FontFamily = (FontFamily)newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value;
+            settings.FontSize = newToken.GetProperty<Int32Property>(C.Properties.FontSize.ToString()).Value;
+            settings.LetterSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LetterSpacing.ToString()).Value;
+            settings.LineSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LineSpacing.ToString()).Value;
+            settings.AntiAliasLevel = newToken.GetProperty<Int32Property>(C.Properties.AntiAliasLevel.ToString()).Value;
+            settings.FontStyle = settings.FontFamily.IsStyleAvailable(FontStyle.Regular) ? FontStyle.Regular : settings.FontFamily.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Italic;
+            settings.TextAlign = (C.TextAlignmentOptions)Enum.Parse(typeof(C.TextAlignmentOptions),
                 newToken
                     .GetProperty<StaticListChoiceProperty>(C.Properties.TextAlignment.ToString())
                     .Value.ToString());
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Bold.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Bold))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Bold.ToString()).Value && settings.FontFamily.IsStyleAvailable(FontStyle.Bold))
             {
-                helper.FontStyle |= FontStyle.Bold;
+                settings.FontStyle |= FontStyle.Bold;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Italic.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Italic))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Italic.ToString()).Value && settings.FontFamily.IsStyleAvailable(FontStyle.Italic))
             {
-                helper.FontStyle |= FontStyle.Italic;
+                settings.FontStyle |= FontStyle.Italic;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Underline.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Underline))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Underline.ToString()).Value && settings.FontFamily.IsStyleAvailable(FontStyle.Underline))
             {
-                helper.FontStyle |= FontStyle.Underline;
+                settings.FontStyle |= FontStyle.Underline;
             }
-            if (newToken.GetProperty<BooleanProperty>(C.Properties.Strikeout.ToString()).Value && helper.FontFamily.IsStyleAvailable(FontStyle.Strikeout))
+            if (newToken.GetProperty<BooleanProperty>(C.Properties.Strikeout.ToString()).Value && settings.FontFamily.IsStyleAvailable(FontStyle.Strikeout))
             {
-                helper.FontStyle |= FontStyle.Strikeout;
+                settings.FontStyle |= FontStyle.Strikeout;
             }
 
-            base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
-            helper.IsCancelRequested = IsCancelRequested;
-            helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds).GetBoundsInt());
+            return settings;
         }
 
         protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)

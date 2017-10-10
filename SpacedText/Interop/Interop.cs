@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SpacedTextPlugin
+﻿namespace SpacedTextPlugin.Interop
 {
+    using System;
     using System.Drawing;
     using System.Runtime.InteropServices;
 
-    internal class Interop
+    internal static class Interop
     {
         [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
         public static extern int SetTextCharacterExtra(IntPtr hdc, int nCharExtra);

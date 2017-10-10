@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SpacedTextPlugin
+﻿namespace SpacedTextPlugin.Data
 {
-    using System.Diagnostics.PerformanceData;
-
     public class Constants
     {
         public enum Properties
