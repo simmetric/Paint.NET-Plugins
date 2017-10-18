@@ -14,3 +14,8 @@ Features:
 Tested with Paint.NET v4.0 and above.
 
 See also: http://forums.getpaint.net/index.php?/topic/111094-spaced-text/
+
+
+## Text Autosizer
+Automatically sizes lines of text to fill out the available width. Commonly used text composition is now easier.
+Based on the Spaced Text plugin and has many of the same features.
