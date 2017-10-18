@@ -1,26 +1,20 @@
 ﻿namespace SpacedTextPlugin.Data
 {
-    using System.Drawing;
+    using System;
+    using PaintDotNet.Effects;
+    using PaintDotNet.PropertySystem;
+    using Shared.Data;
 
-    class Settings
+    internal class Settings:Shared.Data.Settings
     {
-        public string Text { get; set; }
-        public FontFamily FontFamily { get; set; }
-        public int FontSize { get; set; }
-        public double LetterSpacing { get; set; }
-        public double LineSpacing { get; set; }
-        public int AntiAliasLevel { get; set; }
-        public FontStyle FontStyle { get; set; }
         public Constants.TextAlignmentOptions TextAlign { get; set; }
 
-        public Font GetFont()
+        public Settings(PropertyBasedEffectConfigToken newToken) : base(newToken)
         {
-            return new Font(FontFamily, FontSize, FontStyle, GraphicsUnit.Pixel);
-        }
-
-        public Font GetAntiAliasSizeFont()
-        {
-            return new Font(FontFamily, FontSize * AntiAliasLevel, FontStyle, GraphicsUnit.Pixel);
+            TextAlign = (Constants.TextAlignmentOptions)Enum.Parse(typeof(Constants.TextAlignmentOptions),
+                newToken
+                    .GetProperty<StaticListChoiceProperty>(Constants.Properties.TextAlignment.ToString())
+                    .Value.ToString());
         }
     }
 }

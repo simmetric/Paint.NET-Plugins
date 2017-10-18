@@ -4,7 +4,6 @@
     using System.Drawing;
     using System.Drawing.Imaging;
     using PaintDotNet;
-    using SpacedTextPlugin.Data;
 
     internal class SpacedText : IDisposable
     {
@@ -15,7 +14,7 @@
         public Rectangle Bounds { get; private set; }
         public Surface BufferSurface { get; private set; }
         
-        public void RenderText(PdnRegion selection, Settings settings)
+        public void RenderText(PdnRegion selection, Data.Settings settings)
         {
             var selectionRegion = selection;
             Bounds = selectionRegion.GetBoundsInt();
@@ -24,7 +23,7 @@
             {
                 TypeSetter setter = new TypeSetter(settings, selectionRegion);
                 setter.SetText();
-                setter.AlignText();
+                TextAlignment.AlignText(setter.Lines, settings.TextAlign);
 
                 Renderer renderer = new Renderer(settings, selectionRegion);
                 Bitmap resultImage = renderer.Draw(setter.Lines);

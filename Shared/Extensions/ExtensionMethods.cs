@@ -1,4 +1,4 @@
-﻿namespace SpacedTextPlugin
+﻿namespace Shared.Extensions
 {
     using System.Drawing;
 

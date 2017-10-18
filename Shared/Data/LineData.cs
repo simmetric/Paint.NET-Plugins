@@ -1,4 +1,4 @@
-﻿namespace SpacedTextPlugin.Data
+﻿namespace Shared.Data
 {
     using System.Drawing;
 

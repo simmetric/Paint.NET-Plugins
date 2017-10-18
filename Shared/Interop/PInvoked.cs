@@ -1,10 +1,10 @@
-﻿namespace SpacedTextPlugin.Interop
+﻿namespace Shared.Interop
 {
     using System;
     using System.Drawing;
     using System.Drawing.Drawing2D;
 
-    internal static class PInvoked
+    public static class PInvoked
     {
         public static void TextOut(Graphics g, string text, int x, int y, Font font, double letterSpacing)
         {
@@ -33,7 +33,9 @@
             }
         }
 
+#pragma warning disable S3242 // Method parameters should be declared with base types
         public static Size MeasureString(Graphics g, string text, Font font, double letterSpacing)
+#pragma warning restore S3242 // Method parameters should be declared with base types
         {
             IntPtr fontPtr = default(IntPtr);
             Size size = new Size();

@@ -1,6 +1,6 @@
-﻿namespace SpacedTextPlugin.Data
+﻿namespace Shared.Data
 {
-    public class Constants
+    public static class Constants
     {
         public enum Properties
         {

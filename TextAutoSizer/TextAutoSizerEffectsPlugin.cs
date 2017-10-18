@@ -1,39 +1,38 @@
-﻿namespace SpacedTextPlugin
+﻿namespace TextAutoSizerPlugin
 {
     using System;
-    using System.Drawing;
-    using PaintDotNet;
-    using PaintDotNet.Collections;
-    using PaintDotNet.Drawing;
-    using PaintDotNet.Effects;
-    using PaintDotNet.PropertySystem;
     using System.Collections.Generic;
+    using System.Drawing;
     using System.Drawing.Text;
     using System.Linq;
-    using System.Reflection;
+    using PaintDotNet;
+    using PaintDotNet.Collections;
+    using PaintDotNet.Effects;
     using PaintDotNet.IndirectUI;
-    using PaintDotNet.Rendering;
-    using SpacedTextPlugin.Data;
-    using FontStyle = System.Drawing.FontStyle;
+    using PaintDotNet.PropertySystem;
+    using TextAutoSizerPlugin.Data;
     using C = Shared.Data.Constants;
 
-    [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Spaced text")]
-    public class SpacedTextEffectsPlugin : PropertyBasedEffect
+    [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Text Autosizer")]
+    public class TextAutoSizerEffectsPlugin : PropertyBasedEffect
     {
-        private readonly SpacedText helper;
         private readonly List<FontFamily> fontFamilies;
 
-        public SpacedTextEffectsPlugin() : base("Spaced text", StaticIcon, "Text Formations", EffectFlags.Configurable)
+        public TextAutoSizerEffectsPlugin() : base("Text Autosizer", null, "Text Formations", EffectFlags.Configurable)
         {
             fontFamilies =
                 new InstalledFontCollection().Families.ToList();
-            helper = new SpacedText();
         }
 
-        public static string StaticName => "Spaced text";
+        protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)
+        {
+        }
 
-        public static Image StaticIcon => System.Drawing.Image.FromStream(Assembly.GetExecutingAssembly()
-            .GetManifestResourceStream("SpacedTextPlugin.SpacedTextIcon16.png"));
+        protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
+        {
+            base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
+
+        }
 
         protected override PropertyCollection OnCreatePropertyCollection()
         {
@@ -45,7 +44,6 @@
                 new DoubleProperty(C.Properties.LineSpacing.ToString(), C.DefaultLineSpacing, C.MinLineSpacing, C.MaxLineSpacing),
                 new Int32Property(C.Properties.AntiAliasLevel.ToString(), C.DefaultAntiAliasingLevel, C.MinAntiAliasingLevel, C.MaxAntiAliasingLevel),
                 new StaticListChoiceProperty(C.Properties.FontFamily.ToString(), fontFamilies.ToArray<object>(), fontFamilies.FirstIndexWhere(f => f.Name == "Arial" || f.Name == "Helvetica")),
-                new StaticListChoiceProperty(C.Properties.TextAlignment, Enum.GetNames(typeof(C.TextAlignmentOptions)).ToArray<object>(), 0),
                 new BooleanProperty(C.Properties.Bold.ToString(), false),
                 new BooleanProperty(C.Properties.Italic.ToString(), false),
                 new BooleanProperty(C.Properties.Underline.ToString(), false),
@@ -91,74 +89,5 @@
 
             return configUI;
         }
-
-        protected override void OnRender(Rectangle[] renderRects, int startIndex, int length)
-        {
-            if (length == 0)
-            {
-                return;
-            }
-
-            //render buffer to destination surface
-            for (int i = startIndex; i < startIndex + length; i++)
-            {
-                if (renderRects[i].IntersectsWith(helper.Bounds))
-                {
-                    var renderBounds = helper.Bounds;
-                    renderBounds.Intersect(renderRects[i]);
-
-                    //since TextOut does not support transparent text, we will use the resulting bitmap as a transparency map
-                    CopyRectangle(renderBounds, helper.BufferSurface, DstArgs.Surface);
-
-                    //clear the remainder
-                    DstArgs.Surface.Clear(new RectInt32(
-                        renderRects[i].X,
-                        renderBounds.Bottom,
-                        renderRects[i].Width,
-                        renderRects[i].Bottom - renderBounds.Bottom
-                    ), ColorBgra.Transparent);
-                }
-                else
-                {
-                    DstArgs.Surface.Clear(renderRects[i].ToRectInt32(), ColorBgra.Transparent);
-                }
-            }
-        }
-
-        protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
-        {
-            base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
-            helper.IsCancelRequested = IsCancelRequested;
-            helper.RenderText(EnvironmentParameters.GetSelection(SrcArgs.Bounds), new Settings(newToken));
-        }
-
-        private void CopyRectangle(Rectangle area, Surface buffer, Surface dest)
-        {
-            for (int y = area.Top; y < area.Bottom; y++)
-            {
-                for (int x = area.Left; x < area.Right; x++)
-                {
-                    //use the buffer as an alpha map
-                    ColorBgra color = EnvironmentParameters.PrimaryColor;
-                    ColorBgra opacitySource = buffer[x - helper.Bounds.Left, y - helper.Bounds.Top];
-                    color.A = opacitySource.R;
-                    dest[x, y] = color;
-                }
-            }
-        }
-    }
-
-    public class PluginSupportInfo : IPluginSupportInfo
-    {
-        public string Author => ((AssemblyCopyrightAttribute)GetType().Assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false)[0]).Copyright;
-
-        public string Copyright => ((AssemblyDescriptionAttribute)GetType().Assembly.GetCustomAttributes(typeof(AssemblyDescriptionAttribute), false)[0]).Description;
-
-        public string DisplayName => ((AssemblyProductAttribute) GetType().Assembly
-            .GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0]).Product;
-
-        public Version Version => GetType().Assembly.GetName().Version;
-
-        public Uri WebsiteUri => new Uri("https://github.com/simmetric/");
     }
 }

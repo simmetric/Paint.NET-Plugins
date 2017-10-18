@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{1B6B48D3-8F20-420D-A878-F49583ADC79B}</ProjectGuid>
+    <ProjectGuid>{7CB77126-E641-4243-AE94-F333EA362BC7}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SpacedTextPlugin</RootNamespace>
-    <AssemblyName>SpacedTextPlugin</AssemblyName>
+    <RootNamespace>Shared</RootNamespace>
+    <AssemblyName>Shared</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -17,22 +17,18 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\Program Files\paint.net\Effects\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\..\..\..\..\Program Files\paint.net\Effects\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PaintDotNet">
@@ -51,42 +47,27 @@
       <HintPath>..\..\..\..\..\..\Program Files\paint.net\PaintDotNet.Effects.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="PaintDotNet.Framework">
-      <HintPath>..\..\..\..\..\..\Program Files\paint.net\PaintDotNet.Framework.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PaintDotNet.SystemLayer">
-      <HintPath>..\..\..\..\..\..\Program Files\paint.net\PaintDotNet.SystemLayer.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data\Constants.cs" />
+    <Compile Include="Data\Extent.cs" />
+    <Compile Include="Data\LineData.cs" />
     <Compile Include="Data\Settings.cs" />
-    <Compile Include="Renderer.cs" />
-    <Compile Include="SpacedText.cs" />
-    <Compile Include="SpacedTextEffectsPlugin.cs" />
+    <Compile Include="Extensions\ExtensionMethods.cs" />
+    <Compile Include="Interop\Interop.cs" />
+    <Compile Include="Interop\PInvoked.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TextAlignment.cs" />
+    <Compile Include="Text\Renderer.cs" />
+    <Compile Include="Text\TypeSetter.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="SpacedTextIcon16.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.csproj">
-      <Project>{7cb77126-e641-4243-ae94-f333ea362bc7}</Project>
-      <Name>Shared</Name>
-      <Private>False</Private>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>$(SolutionDir)packages\LibZ.Tool.1.2.0.0\tools\libz instrument --assembly "$(TargetPath)" --libz-file "$(SolutionDir)Shared\bin\$(ConfigurationName)\Paint.NET.Plugins.libz"
-zip -u "$(TargetDir)$(ProjectName).zip" "$(TargetFileName)"</PostBuildEvent>
+    <PostBuildEvent>del Paint.NET.Plugins.libz
+$(SolutionDir)packages\LibZ.Tool.1.2.0.0\tools\libz add --libz Paint.NET.Plugins.libz --include Shared.dll</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

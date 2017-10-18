@@ -5,10 +5,11 @@
     using System.Drawing;
     using System.Text;
     using PaintDotNet;
-    using SpacedTextPlugin.Data;
-    using SpacedTextPlugin.Interop;
+    using Shared.Data;
+    using Shared.Extensions;
+    using Shared.Interop;
 
-    internal class TypeSetter : IDisposable
+    public class TypeSetter : IDisposable
     {
         //parameters
         private readonly Settings settings;
@@ -94,40 +95,6 @@
             if (currentLine != null && currentLineText.Length > 0)
             {
                 EndLine(currentLine, currentLineText);
-            }
-        }
-
-        public void AlignText()
-        {
-            foreach (var line in Lines)
-            {
-                var lineBounds = line.LineBounds;
-
-                switch (settings.TextAlign)
-                {
-                    //if align=center, calculate middle
-                    case Constants.TextAlignmentOptions.Center:
-
-                        lineBounds.X = line.LineBounds.Left +
-                                       ((line.LineBounds.Width / 2) - (line.TextSize.Width / 2));
-
-                        line.LineBounds = lineBounds;
-                        break;
-
-                    //if align=right, calculate left margin
-                    case Constants.TextAlignmentOptions.Right:
-
-                        lineBounds.X = line.LineBounds.Left +
-                                       (line.LineBounds.Width - line.TextSize.Width);
-
-                        line.LineBounds = lineBounds;
-                        break;
-                    //if align=justify, set text width = line width
-                    //actual distribution of whitespace will be done in Renderer
-                    case Constants.TextAlignmentOptions.Justify:
-                        line.TextSize = new Size(lineBounds.Width, line.TextSize.Height);
-                        break;
-                }
             }
         }
 
