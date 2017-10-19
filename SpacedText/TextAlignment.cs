@@ -1,8 +1,11 @@
 ﻿namespace SpacedTextPlugin
 {
+    using System;
     using System.Collections.Generic;
     using System.Drawing;
     using Shared.Data;
+    using Shared.Interop;
+    using Settings = SpacedTextPlugin.Data.Settings;
 
     internal static class TextAlignment
     {
@@ -36,6 +39,32 @@
                     case Constants.TextAlignmentOptions.Justify:
                         line.TextSize = new Size(lineBounds.Width, line.TextSize.Height);
                         break;
+                }
+            }
+        }
+
+
+
+        public static void Justify(LineData line, Graphics lineGraphics, Settings settings, Font font)
+        {
+            var lineTextWithoutSpaces = line.Text.Replace(Constants.Space, string.Empty);
+            var lineSizeWithoutSpaces = PInvoked.MeasureString(lineGraphics, lineTextWithoutSpaces, font,
+                settings.LetterSpacing);
+            var spaceWidth = (line.TextSize.Width - lineSizeWithoutSpaces.Width) /
+                             Math.Max((line.Text.Length - lineTextWithoutSpaces.Length), 1);
+            if (spaceWidth > font.Size * 3)
+            {
+                PInvoked.TextOut(lineGraphics, line.Text, 0, 0, font, settings.LetterSpacing);
+            }
+            else
+            {
+                var x = 0;
+
+                foreach (string word in line.Text.Split(Constants.SpaceChar))
+                {
+                    var wordSize = PInvoked.MeasureString(lineGraphics, word, font, settings.LetterSpacing);
+                    PInvoked.TextOut(lineGraphics, word, x, 0, font, settings.LetterSpacing);
+                    x += wordSize.Width + spaceWidth;
                 }
             }
         }

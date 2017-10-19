@@ -26,7 +26,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\Program Files\paint.net\Effects\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -62,6 +62,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data\Settings.cs" />
+    <Compile Include="LineMeasure.cs" />
+    <Compile Include="Renderer.cs" />
     <Compile Include="TextAutoSizer.cs" />
     <Compile Include="TextAutoSizerEffectsPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -78,8 +80,13 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>$(SolutionDir)packages\LibZ.Tool.1.2.0.0\tools\libz instrument --assembly "$(TargetPath)" --libz-file "$(SolutionDir)Shared\bin\$(ConfigurationName)\Paint.NET.Plugins.libz"
-zip -u "$(TargetDir)$(ProjectName).zip" "$(TargetFileName)"</PostBuildEvent>
+    <PostBuildEvent>if $(ConfigurationName) == Release (
+	$(SolutionDir)packages\LibZ.Tool.1.2.0.0\tools\libz instrument --assembly "$(TargetPath)" --libz-file "$(SolutionDir)Shared\bin\$(ConfigurationName)\$(SolutionName).libz"
+	zip "$(TargetDir)$(ProjectName).zip" "$(TargetFileName)"
+)</PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>del "$(TargetDir)$(ProjectName)*.*"</PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

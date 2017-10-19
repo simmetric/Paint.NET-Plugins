@@ -12,20 +12,19 @@
     public class TypeSetter : IDisposable
     {
         //parameters
-        private readonly Settings settings;
-        private readonly PdnRegion selectionRegion;
-        private readonly Rectangle bounds;
+        protected readonly Settings settings;
+        protected readonly PdnRegion selectionRegion;
+        protected readonly Rectangle bounds;
 
         //drawing tools for measuring
-        private readonly Font font;
-        private readonly Image image;
-        private readonly Graphics graphics;
-        private readonly Rectangle scaledBounds;
+        protected readonly Font font;
+        protected readonly Image image;
+        protected readonly Graphics graphics;
+        protected readonly Rectangle scaledBounds;
 
         //constants
-        private readonly int lineIncrement;
-
-        private readonly int horizontalMargin;
+        protected readonly int lineIncrement;
+        protected readonly int horizontalMargin;
 
         //result
         public ICollection<LineData> Lines { get; }
@@ -50,7 +49,7 @@
             Lines = new List<LineData>();
         }
 
-        public void SetText()
+        public virtual void SetText()
         {
             IEnumerable<string> words = settings.Text.Replace(Environment.NewLine, Constants.Space + Environment.NewLine + Constants.Space).Split(' ');
             StringBuilder currentLineText = new StringBuilder();
@@ -123,7 +122,7 @@
             }
         }
 
-        private Rectangle DetermineLineBounds(Extent topLine, Extent bottomLine)
+        protected Rectangle DetermineLineBounds(Extent topLine, Extent bottomLine)
         {
             int maxLeftX = Math.Max(topLine.Left, bottomLine.Left) + horizontalMargin;
             int minRightX = Math.Max(0, Math.Min(topLine.Right, bottomLine.Right) - horizontalMargin);
@@ -136,9 +135,8 @@
         /// </summary>
         /// <param name="scaledLineY">The y coordinate in AA scale</param>
         /// <returns>The visible extent of the line in AA scale-coordinates</returns>
-        private Extent TraceLineExtent(int scaledLineY)
+        protected Extent TraceLineExtent(int scaledLineY)
         {
-
             int lineY = (scaledLineY / settings.AntiAliasLevel) + bounds.Top;
 
             //if y falls outside selection, simply return entire line

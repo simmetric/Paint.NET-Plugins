@@ -6,7 +6,7 @@
     {
         public Settings(PropertyBasedEffectConfigToken newToken) : base(newToken)
         {
-            
+            FontSize = 20;
         }
     }
 }

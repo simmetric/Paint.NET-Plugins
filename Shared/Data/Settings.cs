@@ -10,7 +10,7 @@
     {
         public string Text { get; set; }
         public FontFamily FontFamily { get; set; }
-        public int FontSize { get; set; }
+        public float FontSize { get; set; }
         public double LetterSpacing { get; set; }
         public double LineSpacing { get; set; }
         public int AntiAliasLevel { get; set; }
@@ -30,7 +30,6 @@
         {
             Text = newToken.GetProperty<StringProperty>(C.Properties.Text.ToString()).Value;
             FontFamily = (FontFamily)newToken.GetProperty<StaticListChoiceProperty>(C.Properties.FontFamily.ToString()).Value;
-            FontSize = newToken.GetProperty<Int32Property>(C.Properties.FontSize.ToString()).Value;
             LetterSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LetterSpacing.ToString()).Value;
             LineSpacing = newToken.GetProperty<DoubleProperty>(C.Properties.LineSpacing.ToString()).Value;
             AntiAliasLevel = newToken.GetProperty<Int32Property>(C.Properties.AntiAliasLevel.ToString()).Value;

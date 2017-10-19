@@ -11,6 +11,7 @@
 
         public Settings(PropertyBasedEffectConfigToken newToken) : base(newToken)
         {
+            FontSize = newToken.GetProperty<Int32Property>(Constants.Properties.FontSize.ToString()).Value;
             TextAlign = (Constants.TextAlignmentOptions)Enum.Parse(typeof(Constants.TextAlignmentOptions),
                 newToken
                     .GetProperty<StaticListChoiceProperty>(Constants.Properties.TextAlignment.ToString())
