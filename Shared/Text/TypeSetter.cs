@@ -1,4 +1,4 @@
-﻿namespace SpacedTextPlugin
+﻿namespace Shared.Text
 {
     using System;
     using System.Collections.Generic;

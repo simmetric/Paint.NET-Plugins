@@ -15,9 +15,11 @@
 
         protected override void DrawLine(Graphics lineGraphics, LineData line)
         {
+            base.DrawLine(lineGraphics, line);
+
             settings.FontSize = line.FontSize;
             var font = settings.GetAntiAliasSizeFont();
-            PInvoked.TextOut(graphics, line.Text, line.LineBounds.Left, line.LineBounds.Top, font, settings.LetterSpacing);
+            PInvoked.TextOut(lineGraphics, line.Text, 0, 0, font, settings.LetterSpacing);
         }
     }
 }

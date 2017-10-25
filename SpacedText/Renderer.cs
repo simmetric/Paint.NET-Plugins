@@ -4,7 +4,7 @@
     using PaintDotNet;
     using Shared.Data;
     using Shared.Interop;
-
+     
     internal sealed class Renderer : Shared.Text.Renderer
     {
         private new readonly SpacedTextPlugin.Data.Settings settings;

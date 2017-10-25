@@ -4,7 +4,6 @@
     using System.Drawing;
     using System.Drawing.Imaging;
     using PaintDotNet;
-    using SpacedTextPlugin;
 
     internal class TextAutoSizer : IDisposable
     {
@@ -25,7 +24,7 @@
             {
                 LineMeasure measure = new LineMeasure(settings, selectionRegion);
                 measure.SetText();
-
+                
                 Renderer renderer = new Renderer(settings, selectionRegion);
                 Bitmap resultImage = renderer.Draw(measure.Lines);
 #if DEBUG

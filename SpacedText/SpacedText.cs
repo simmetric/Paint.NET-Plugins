@@ -4,6 +4,7 @@
     using System.Drawing;
     using System.Drawing.Imaging;
     using PaintDotNet;
+    using Shared.Text;
 
     internal class SpacedText : IDisposable
     {
